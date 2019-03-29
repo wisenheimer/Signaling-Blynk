@@ -4,7 +4,7 @@
  * An IR LED must be connected to Arduino PWM pin 3.
  *
  * Перед прошивкой настроить файл
- * https://github.com/wisenheimer/Signaling-Blynk/blob/master/libraries/main_type/settings.h
+ * /libraries/main_type/settings.h
  *
  * @Author: wisenheimer
  * @Date:   2019-03-29 12:30:00
@@ -53,11 +53,14 @@ void setup()
 
 void timer(uint16_t time)
 {
+#if WTD_ENABLE
+  wdt_reset();
+#endif
   if(millis() - msec >= time)
   {
     msec = millis();
  
-    // Опрос датчиков ///
+    // Опрос датчиков
     if(sensors->SensOpros())
     {
       ALARM_ON // режим тревога вкл.
@@ -78,9 +81,6 @@ void loop()
 {
   while(1)
   {
-#if WTD_ENABLE
-    wdt_reset();
-#endif    
     timer(1000);
   }    
 }
