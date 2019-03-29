@@ -3,6 +3,14 @@ Signaling Arduino+esp8266+SIM800L+Blynk
 
 ![IMG_20190327_152148](https://user-images.githubusercontent.com/45194485/55217894-aa80cc00-5211-11e9-9fe6-9ef0c5320408.jpg)
 
+Download latest Blynk library here:
+    https://github.com/blynkkk/blynk-library/releases/latest
+    Downloads, docs, tutorials: http://www.blynk.cc
+    Sketch generator:           http://examples.blynk.cc
+    Blynk community:            http://community.blynk.cc
+    Follow us:                  http://www.fb.com/blynkapp
+                                http://twitter.com/blynk_app
+
 ## На печатной плате могут разместиться:
 
 * Arduino Nano V3.0
