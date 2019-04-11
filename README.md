@@ -26,6 +26,8 @@ Cигнализация модульная, можно выбрать ту ко�
 
 https://github.com/blynkkk/blynk-library/releases/latest
 
+Дополнительная информация о Blynk здесь:
+
 Downloads, docs, tutorials: http://www.blynk.cc
 
 Sketch generator:           http://examples.blynk.cc
