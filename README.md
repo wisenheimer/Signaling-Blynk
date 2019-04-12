@@ -3,10 +3,10 @@ Signaling Arduino+esp8266+SIM800L+Blynk
 
 ![IMG_20190327_152148](https://user-images.githubusercontent.com/45194485/55217894-aa80cc00-5211-11e9-9fe6-9ef0c5320408.jpg)
 
-Прошивка создана для платы из этого проекта. Плата постоянно совершенствуется, и может отличаться от платы на фотографии.
-https://easyeda.com/MihAlex/signaling-Arduino-SIM800L
+Прошивка создана для платы из этого проекта: https://easyeda.com/MihAlex/signaling-Arduino-SIM800L
+Плата постоянно совершенствуется, и может изменяться.
 
-## На печатной плате могут разместиться:
+### На печатной плате могут разместиться:
 
 * Arduino Nano V3.0
 * NodeMcu v3 для выхода в интернет.
@@ -106,7 +106,7 @@ https://play.google.com/store/apps/details?id=cc.blynk
 
 ![11](https://user-images.githubusercontent.com/45194485/55216122-f715d880-520c-11e9-8aac-715401f1c9c2.jpg)
 
-Добавляем новый Event. Устанавливаем виртуальный пин V2, прописываем условие срабатывания V2 is equal 1.
+Добавляем новый Event. Устанавливаем виртуальный пин V2, прописываем условие срабатывания V2 is equal 1. Добавляем текст сообщения. Например ALARM.
 
 ![12](https://user-images.githubusercontent.com/45194485/55216239-42c88200-520d-11e9-9f8a-38703c935b06.jpg)
 
@@ -119,6 +119,35 @@ https://play.google.com/store/apps/details?id=cc.blynk
 В конце получаем следующее:
 
 ![15](https://user-images.githubusercontent.com/45194485/55217312-47db0080-5210-11e9-86b8-e4477b2298de.png)
+
+
+## Зарезервированные номера пинов arduino nano
+(см. https://github.com/wisenheimer/Signaling-Blynk/blob/master/libraries/main_type/main_type.h):
+
+#define	RING_PIN  2 // отслеживает вызовы с модема
+
+#define	POWER_PIN 3 // отслеживает наличие питания
+
+#define	DOOR_PIN  4 // датчик двери (геркон). Один конец на GND, второй на цифровой пин arduino.
+К этому же пину подключён встроенный датчик температуры DS18B20.		      
+
+#define	BOOT_PIN  5 // перезагрузка модема SIM800L
+
+### Пины для подключения модуля RF24L01 по SPI интерфейсу
+
+#define	CE_PIN    9
+
+#define	CSN_PIN   10
+
+#define	MO_PIN    11
+
+#define	MI_PIN    12
+
+#define	SCK_PIN   13
+
+### Для ИК-приёмника
+
+#define RECV_PIN  11
 
 #	НАСТРОЙКА ДАТЧИКОВ
 
