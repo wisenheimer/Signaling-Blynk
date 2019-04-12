@@ -3,6 +3,9 @@ Signaling Arduino+esp8266+SIM800L+Blynk
 
 ![IMG_20190327_152148](https://user-images.githubusercontent.com/45194485/55217894-aa80cc00-5211-11e9-9fe6-9ef0c5320408.jpg)
 
+Прошивка создана для платы из этого проекта. Плата постоянно совершенствуется, и может отличаться от платы на фотографии.
+https://easyeda.com/MihAlex/signaling-Arduino-SIM800L
+
 ## На печатной плате могут разместиться:
 
 * Arduino Nano V3.0
