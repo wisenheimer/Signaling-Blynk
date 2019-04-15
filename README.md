@@ -52,6 +52,7 @@ Follow us:                  http://www.fb.com/blynkapp
                             http://twitter.com/blynk_app
 
 Прошивка для NodeMcu написана в среде Arduino IDE. Чтобы собрать проект, необходимо установить библиотеку для ESP8266 от сюда https://github.com/esp8266/Arduino#available-versions
+Ставим версию 2.4.2. С более новыми может не работать.
 
 Библиотека 1-Wire
 https://github.com/PaulStoffregen/OneWire
@@ -292,6 +293,6 @@ SENS_GET_NAMES - Возвращает имена датчиков
 
 В ответном смс
 
-AT+CMGS="+79xxxxxxxxx" - номер звонившего (админа)
+>AT+CMGS="+79xxxxxxxxx" - номер звонившего (админа)
 
-+CUSD: 0, "Balance:27,60r", 15 - ответ оператора
+>+CUSD: 0, "Balance:27,60r", 15 - ответ оператора
