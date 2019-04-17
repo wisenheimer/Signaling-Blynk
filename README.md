@@ -263,7 +263,7 @@ Sensor(PIN, CHECK_DIGITAL_SENSOR,	"FIRE", HIGH)
 	
 Sensor(IR_SENSOR,	"IR_0", IR_CODE)
 
-Датчик с передающим Wi-Fi модулем RF24L01
+Датчик с передающим модулем RF24L01
 	
 Sensor(RF24_SENSOR,	"nRF_0", RF0_CODE)
 
