@@ -44,7 +44,7 @@ Sensor sens[SENS_NUM]={
   //Sensor(6, CHECK_DIGITAL_SENSOR, "FIRE", HIGH),
   //Sensor(A7,       TERMISTOR,     "TERM", LOW, 10, 45),
   Sensor(6,        DIGITAL_SENSOR,"RADAR",LOW),
-#if RF_ENABLE // Датчик с Wi-Fi модулем nRF24L01
+#if RF_ENABLE // Датчик с радиомодулем nRF24L01
   Sensor(          RF24_SENSOR,   "nRF_0",RF0_CODE),
   Sensor(          RF24_SENSOR,   "nRF_1",RF1_CODE)
 #endif
