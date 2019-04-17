@@ -85,6 +85,7 @@ bool Sensor::get_pin_state()
   return state;
 }
 
+#if DS18_ENABLE
 // function to print a device address
 void printAddress(DeviceAddress deviceAddress)
 {
@@ -94,6 +95,7 @@ void printAddress(DeviceAddress deviceAddress)
     Serial.print(deviceAddress[i], HEX);
   }
 }
+#endif
 
 uint8_t Sensor::get_count()  
 {

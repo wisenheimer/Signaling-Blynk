@@ -478,6 +478,8 @@ void MODEM::parser()
 
   if((p = READ_COM_FIND("DTMF:"))!=NULL) //+DTMF: 2
   { 
+    DEBUG_PRINTLN();
+    DEBUG_PRINT(p);
     p+=6;
    
     if(*p == '#')
@@ -858,7 +860,11 @@ void MODEM::wiring() // прослушиваем телефон
 
 #else
 
-  parser();
+  if(text->filling())
+  {
+    parser();
+    text->Clear();
+  }  
 
 #endif
 
@@ -908,7 +914,7 @@ void MODEM::wiring() // прослушиваем телефон
       case SENS_GET_NAMES:
         if(GET_FLAG(GUARD_ENABLE))
         {
-          email_buffer->AddText(I2C_NAME);            
+          email_buffer->AddText_P(PSTR(I2C_NAME));            
           for(uint8_t k = 0; k < sensors->size; k++)
           {
             email_buffer->AddChar(' ');
@@ -916,6 +922,14 @@ void MODEM::wiring() // прослушиваем телефон
           }
           email_buffer->AddChar('\n');
         }
+        break;
+        case MODEM_RESET:
+#if MODEM_ENABLE
+        reinit();
+#endif
+#if ESP8266_ENABLE
+        I2C_RESET
+#endif
         break;
 #if MODEM_ENABLE      
       case TEL_ON_OFF:
@@ -963,9 +977,6 @@ void MODEM::wiring() // прослушиваем телефон
           }  
           //SERIAL_PRINTLN(SIM_RECORDS_INFO);
         }
-        break;
-      case MODEM_RESET:
-        reinit();
         break;
       default:
         SERIAL_PRINT(F("AT+CUSD=1,\"#"));

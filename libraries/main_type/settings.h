@@ -15,7 +15,7 @@
 // скорость последовательного порта Serial
 #define SERIAL_RATE	115200
 //------------------------------------------------------------------------------
-#define MODEM_ENABLE	1 // Используем GSM модем SIM800L
+#define MODEM_ENABLE	0 // Используем GSM модем SIM800L
 #define ESP8266_ENABLE	1 // Используем ESP8266+Blynk через i2c интерфейс
 //------------------------------------------------------------------------------
 // Коды для Wi-Fi датчиков, максимум 6 датчиков.
@@ -53,9 +53,15 @@
 //////////////////////////////////////////////////////////
 // Отправка почты
 #define SMTP_SERVER					F("\"smtp-devices.yandex.com\",25") // почтовый сервер яндекс и порт
+#define SMTP_USER_NAME_AND_PASSWORD	F("\"shmarinivan\",\"e283a52c604c8c0c9b3714adb1b044e8\"") // Лоргин и пароль от почты
+#define SENDER_ADDRESS_AND_NAME		F("\"shmarinivan@yandex.com\",\"SIM800L\"")
+#define RCPT_ADDRESS_AND_NAME		F("\"mihalex101@gmail.com\",\"Ivan\"") // Адрес и имя получателя
+/*
+#define SMTP_SERVER					F("\"smtp-devices.yandex.com\",25") // почтовый сервер яндекс и порт
 #define SMTP_USER_NAME_AND_PASSWORD	F("\"login\",\"password\"") // Лоргин и пароль от почты
 #define SENDER_ADDRESS_AND_NAME		F("\"login@yandex.com\",\"SIM800L\"")
 #define RCPT_ADDRESS_AND_NAME		F("\"login@mail.ru\",\"Ivan\"") // Адрес и имя получателя
+*/
 //#	define RCPT_CC_ADDRESS_AND_NAME		F("\"login@yandex.com\",\"Ivan\"") // Адрес и имя получателя (копия)
 //#	define RCPT_BB_ADDRESS_AND_NAME		F("\"login2@yandex.com\",\"Ivan\"") // Адрес и имя получателя (вторая копия)
 
@@ -67,7 +73,7 @@
 //////////////////////////////////////////////////////////
 #define BEEP_ENABLE 0 // пищалка, не работает совместно с IR_ENABLE
 #define DHT_ENABLE  0 // библиотека датчиков DHT11, DHT21 и DHT22
-#define TERM_ENABLE 1 // библиотека для термистора
+#define TERM_ENABLE 0 // библиотека для термистора
 #define DS18_ENABLE 1 // библиотека для датчика DS18B20
 // Эти две библиотеки можно включать только для Signalka.ino
 //----------------------------------------------------------

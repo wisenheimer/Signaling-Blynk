@@ -82,15 +82,17 @@ enum common_flag {
 #define ALARM_BEGIN " ALARM!"
 #define ALARM_END	" ALL:"
 
-#define ARDUINO_I2C_ADDR 	1
-#define I2C_NAME	     "NAME:"
-#define I2C_DATA			 0x9090
-#define I2C_SENS_VALUE 0x01
-#define I2C_FLAGS		   0x02
-#define I2C_SENS_INFO  0x03
+#define ARDUINO_I2C_ADDR 1
+#define I2C_NAME		    "NAME:"
+#define I2C_FLAG        "FLAG:"
+#define I2C_DATA        0x9090
+#define I2C_SENS_VALUE 	0x01
+#define I2C_FLAGS       0x02
+#define I2C_SENS_INFO 	0x03
+#define I2C_FLAG_NAMES  0x04
 
-#define START_BYTE	   0x91
-#define END_BYTE	     0x92
+#define START_BYTE		  0x91
+#define END_BYTE		    0x92
 
 #define FLAG_COUNT	2
 

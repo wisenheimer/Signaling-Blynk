@@ -35,13 +35,14 @@ MODEM *phone;
 MY_SENS *sensors = NULL;
 
 // Размер массива должен равняться количеству датчиков!
-# define SENS_NUM 4
+# define SENS_NUM 2
 // Сюда надо вписать свои датчики. Описание смотрите в 
 // https://github.com/wisenheimer/Signaling-Blynk/blob/master/README.md
 Sensor sens[SENS_NUM]={
-  Sensor(DOOR_PIN, DIGITAL_SENSOR,"DOOR", HIGH,0),
+  //Sensor(DOOR_PIN, DIGITAL_SENSOR,"DOOR", HIGH,0),
   Sensor(DOOR_PIN, DS18B20,       "18B20",LOW, 10, 45),
-  Sensor(A7,       TERMISTOR,     "TERM", LOW, 10, 45),
+  //Sensor(6, CHECK_DIGITAL_SENSOR, "FIRE", HIGH),
+  //Sensor(A7,       TERMISTOR,     "TERM", LOW, 10, 45),
   Sensor(6,        DIGITAL_SENSOR,"RADAR",LOW),
 #if RF_ENABLE // Датчик с Wi-Fi модулем nRF24L01
   Sensor(          RF24_SENSOR,   "nRF_0",RF0_CODE),

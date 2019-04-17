@@ -5,11 +5,12 @@ bool flag_esp8266 = false;
 
 #if ESP8266_ENABLE
 
-#define I2C_OPROS if(millis()-i2c_time>10000){digitalWrite(A3,LOW);delay(1000);digitalWrite(A3,HIGH);i2c_time=millis();flag_esp8266=false;}
+#define I2C_RESET {digitalWrite(A2,LOW);digitalWrite(A3,LOW);delay(1000);digitalWrite(A2,HIGH);digitalWrite(A3,HIGH);i2c_time=millis();flag_esp8266=false;}
+#define I2C_OPROS if(millis()-i2c_time>30000)I2C_RESET
 
 #include <Wire.h>
 
-#define I2C_INIT i2c_init();i2c_rx_buf=text;i2c_tx_buf=email_buffer;i2c_enable=1;dtmf0=DTMF; 
+#define I2C_INIT i2c_init();i2c_rx_buf=text;i2c_tx_buf=email_buffer;i2c_enable=1;dtmf0=DTMF;I2C_RESET
 
 TEXT* i2c_tx_buf;
 TEXT* i2c_rx_buf;
@@ -31,6 +32,7 @@ void receiveEvent(int numBytes)
 
   while (0 <Wire.available() && i < BUFFER_LENGTH) {
     buf[i] = (uint8_t)Wire.read();
+    //DEBUG_PRINT(' ');DEBUG_PRINT(buf[i]);DEBUG_PRINT('|');DEBUG_PRINT(buf[i],HEX);
     i++;
   }
 
@@ -73,6 +75,16 @@ void receiveEvent(int numBytes)
           } 
         }
         else
+        if(cmd->cmd==I2C_FLAG_NAMES)
+        {
+          i2c_tx_buf->AddText_P(PSTR(I2C_FLAG));            
+          i2c_tx_buf->AddText_P(PSTR(" ALARM GUARD EMAIL"));              
+#if MODEM_ENABLE
+          i2c_tx_buf->AddText_P(PSTR(" GPRS SMS RING"));
+#endif
+          i2c_tx_buf->AddChar('\n');           
+        }
+        else
         if(cmd->cmd==I2C_FLAGS)
         {
           i+=sizeof(i2c_cmd);
@@ -105,40 +117,25 @@ void requestEvent()
   uint8_t i;
   uint8_t k;
   uint8_t l;
-  char buf[BUFFER_LENGTH];
+  char buf[32];
 
   flag_esp8266 = true;
 
   i2c_time = millis();
 
-  memset(buf, 0, BUFFER_LENGTH);
+  memset(buf, 0, 32);
 
   for(i = 0; i < 2; i++) buf[i] = START_BYTE;
   
   buf[i++] = flags;
 
-  i+=i2c_tx_buf->GetBytes(buf+i, BUFFER_LENGTH-5);
+  i+=i2c_tx_buf->GetBytes(buf+i, 27);
 
   for(k = 0; k < 2; k++) buf[i++] = END_BYTE;
 
-  Wire.write(buf, BUFFER_LENGTH);
-/*
-#if DEBUG_MODE
-  for(k = 0; k < i; k++)
-  {
-    char ch = *(buf+k);
-    if(isprint(ch))
-    {
-      DEBUG_PRINT(ch);
-    }
-    else
-    {
-      DEBUG_PRINT(F(" 0x"));DEBUG_PRINT(ch,HEX);DEBUG_PRINT(' ');
-    }
-  }
-  DEBUG_PRINTLN();
-#endif
-*/ 
+  //memset(buf+i, 0, BUFFER_LENGTH-i);
+
+  Wire.write(buf, 32);
 }
 
 void i2c_init()

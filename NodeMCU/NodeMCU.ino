@@ -32,9 +32,22 @@
 
   Change WiFi ssid, pass, and Blynk auth token to run :)
   Feel free to apply it to any other example. It's simple!
+
+  Wi-Fi модем Blynk.
+ * 
+ * Для включения/отключения вывода отладочных сообщений
+ * в Serial отредактируйте файл
+ * libraries/main_type/settings.h
+ *
+ * Прошивать как есть
+ * @Author: wisenheimer
+ * @Date:   2019-04-17 8:30:00
+ * @Last Modified by:   
+ * @Last Modified time:
  *************************************************************/
 
 /* Comment this out to disable prints and save space */
+
 #define BLYNK_PRINT Serial
 
 #include <Wire.h>
@@ -60,7 +73,18 @@
 
 #define PRINT_IN_BUFFER(str)  Serial.println();Serial.print(str);Serial.print(in_buffer);for(uint8_t i=0;i<in_index;i++){\
                               Serial.print(' ');Serial.print(*(in_buffer+i),HEX);}Serial.println();
-uint8_t wifi_mode = 0;
+
+#define I2C_SET_COMMAND(str,i,command) {str.type=I2C_DATA;str.index=i;str.cmd=command;}
+#define I2C_SEND_COMMAND(index,cmd) {struct i2c_cmd str;I2C_SET_COMMAND(str,index,cmd);I2C_WRITE((uint8_t*)&str,sizeof(str));}
+#define GET_SENS_VALUE(i) if(GET_FLAG(GUARD_ENABLE))if(sens_num){if(i>=sens_num)i=0;I2C_SEND_COMMAND(i++,I2C_SENS_VALUE);}else if(flags_num)I2C_SEND_COMMAND(i,I2C_SENS_INFO)
+
+#define FLAGS_DELETE flags_num=0;
+#define SENS_DELETE  while(sens_num){sens_num--;delete[] sensors[sens_num].name;}
+
+// Задаём максимальное количество датчиков
+#define SENS_NUM_MAX  10
+// Задаём максимальное количество флагов
+#define FLAGS_NUM_MAX 6
 
 struct{
   char ssid[32];
@@ -78,29 +102,18 @@ BlynkTimer timer;
 
 FLAGS
 
-// Задаём максимальное количество датчиков
-#define SENS_NUM_MAX  10
-// Число флагов, выводимых на экран
-uint8_t FLAGS_NUM;
 // Названия флагов. Эти строки будут выведены на экран телефона
-char* table_flags[] = {
-  "ALARM",
-  "GUARD",
-  "EMAIL",
-// Строки для SIM800L. Параметр MODEM_ENABLE задаётся в settings.h
-#if MODEM_ENABLE
-  "GPRS",
-  "SMS",
-  "RING"
-#endif
-};
+char table_flags[FLAGS_NUM_MAX][20]; // список имён датчиков
 
-char* table_sens[SENS_NUM_MAX]; // список имён датчиков
-float values[SENS_NUM_MAX]; // хранит последнее значение датчика
+struct sens{
+  char* name;
+  float value;
+} sensors[SENS_NUM_MAX];
 
 char in_buffer[IN_BUF_SIZE]; // сюда складываются байты из шины I2C
 uint8_t in_index = 0;
 uint8_t sens_index = 0;
+uint8_t flags_num = 0; // Число флагов
 uint8_t sens_num = 0; // Число датчиков
 
 #define BUF_DEL_BYTES(pos,num) {in_index-=num;for(uint8_t i=pos,j=pos+num;i<in_index;i++,j++){in_buffer[i]=in_buffer[j];} \
@@ -135,11 +148,11 @@ bool parser()
         DEBUG_PRINT(F("sens_val:"));
         DEBUG_PRINTLN(sens_value.value);
       
-        if(values[sens_value.index] != sens_value.value)
+        if(sensors[sens_value.index].value != sens_value.value)
         {
-          values[sens_value.index] = sens_value.value;
-          //Blynk.virtualWrite(values[sens_value.index].v_pin, values[sens_value.index].value);
-          table.updateRow(sens_value.index+FLAGS_NUM, table_sens[sens_value.index], values[sens_value.index]);
+          sensors[sens_value.index].value = sens_value.value;
+          //Blynk.virtualWrite(values[sens_value.index].v_pin, values[sens_value.index]);
+          table.updateRow(sens_value.index+flags_num, sensors[sens_value.index].name, sensors[sens_value.index].value);
         }              
       }  
 #if DEBUG_MODE
@@ -156,11 +169,76 @@ bool parser()
   return true; 
 }
 
+uint8_t flags_read_names(char* cmd, uint8_t shift)
+{
+  char* p;
+  uint8_t i;
+  uint8_t index = 0;
+  
+  char* pos=READ_COM_FIND(cmd);
+
+  if(pos!=NULL)
+  {
+    p=pos+strlen(cmd);
+              
+    while(*p==' ')
+    {
+      i = 0;
+      p++;
+      while(isprint(*p) && *p!=' ' && i<19) table_flags[index][i++] = *p++;
+      table_flags[index][i++] = 0;
+         
+      table.addRow(shift+index, table_flags[index], 0);
+      ROW_SELECT(shift+index, 0);
+      index++;      
+    }
+  }
+
+  return index;
+}
+
+uint8_t sens_read_names(char* cmd, uint8_t shift)
+{
+  char* p;
+  uint8_t i;
+  uint8_t index = 0;
+  char buf[32];
+
+  char* pos=READ_COM_FIND(cmd);
+
+  if(pos!=NULL)
+  {
+    p=pos+strlen(cmd);
+              
+    while(*p==' ')
+    {
+      i = 0;
+      p++;
+      while(isprint(*p) && *p!=' ' && i<31) buf[i++] = *p++;
+      buf[i++] = 0;
+                
+      if ( (sensors[index].name = (char*)malloc(strlen(buf) + 1) )== NULL )
+      {
+        terminal.print("error: malloc");
+        terminal.flush();
+        exit(1);
+      }
+      
+      strcpy(sensors[index].name, buf);
+      table.addRow(shift+index, buf, 0);
+      ROW_SELECT(shift+index, 0);
+      index++;      
+    }
+  }
+
+  return index;
+}
+
 void i2c_read()
 {
   char inChar;
   bool start_flag = false; // найден пакет данных
-  uint8_t count = 0;  
+  uint8_t count = 0;
 
   while (Wire.available()) {
     // получаем новый байт:
@@ -180,57 +258,32 @@ void i2c_read()
       if(count == 0)
       {
         start_flag = false;
+
+        if(!flags_num) flags_num=flags_read_names(I2C_FLAG, 0);
+        else
+        if(!sens_num)
+        {
+          sens_num=sens_read_names(I2C_NAME, flags_num);
+          //if(sens_num) values = new float [sens_num];
+        }        
+        
         parser();
+#if DEBUG_MODE
+        PRINT_IN_BUFFER(F("PRINT:"))
+#endif
+        if(in_index==0) return;
+        terminal.write(in_buffer);
+        terminal.flush();
+        EMAIL(in_buffer);
+        memset(in_buffer, 0, IN_BUF_SIZE);
+        in_index = 0;        
       } 
       continue;      
     }
     
     if(start_flag)
     {
-      in_buffer[in_index++] = inChar;
-      if(inChar == '\n' || in_index==IN_BUF_SIZE)
-      {
-        char* pos=READ_COM_FIND(I2C_NAME);
-        
-        if(pos!=NULL)
-        {
-          char* p=pos;
-          uint8_t num = 0;
-          if(!sens_num)
-          {   
-            num=strlen(I2C_NAME);
-            p+=num;
-            char buf[32];            
-            while(*p==' ' && sens_num<SENS_NUM_MAX)
-            {
-              uint8_t i = 0;
-              p++;
-              while(isprint(*p) && *p!=' ' && i<31) buf[i++] = *p++;
-              buf[i++] = 0;
-              num+=i;
-              if(table_sens[sens_num]!=NULL)
-              {
-                delete[] table_sens[sens_num];
-              }        
-              table_sens[sens_num] = (char*)malloc(strlen(buf)+1);
-              strcpy(table_sens[sens_num], buf);
-              table.addRow(FLAGS_NUM+sens_num, buf, 0);
-              sens_num++;
-            }
-          }
-          else num = in_index;
-          //BUF_DEL_BYTES(in_buffer-pos, num);
-        }
-        if(!parser()) continue;
-#if DEBUG_MODE
-        PRINT_IN_BUFFER(F("PRINT:"))
-#endif
-        terminal.write(in_buffer);
-        terminal.flush();
-        EMAIL(in_buffer);
-        memset(in_buffer, 0, IN_BUF_SIZE);
-        in_index = 0;
-      }
+      if(in_index < IN_BUF_SIZE) in_buffer[in_index++] = inChar;      
     }
     else if(count==2)
     {
@@ -242,14 +295,9 @@ void i2c_read()
       
         Blynk.virtualWrite(ALARM_PIN, GET_FLAG(ALARM));
 
-        if(GET_FLAG(GUARD_ENABLE)==0)
-        {
-          while(sens_num--){
-             values[sens_num] = 0;
-          }          
-        }
+        if(GET_FLAG(GUARD_ENABLE)==0) SENS_DELETE
 
-        for(uint8_t k = 0; k < FLAGS_NUM; k++)
+        for(uint8_t k = 0; k < flags_num; k++)
         {
           table.updateRow(k, table_flags[k], GET_FLAG(k));
           ROW_SELECT(k, GET_FLAG(k));
@@ -257,28 +305,30 @@ void i2c_read()
       }
     }        
   }
+
   DEBUG_PRINTLN();
 }
 
 void myTimerEvent()
-{  
-  // Запрашиваем данные в Ардуино
-  if(Wire.requestFrom(ARDUINO_I2C_ADDR, BUFFER_LENGTH))
-  {
-    i2c_read();
-  }    
-}
-
-#define I2C_SET_COMMAND(str,i,command) {str.type=I2C_DATA;str.index=i;str.cmd=command;}
-#define I2C_SEND_COMMAND(index,cmd) {struct i2c_cmd str;I2C_SET_COMMAND(str,index,cmd);I2C_WRITE((uint8_t*)&str,sizeof(str));}
-#define GET_SENS_VALUE(i) if(GET_FLAG(GUARD_ENABLE))if(sens_num){if(i>=sens_num)i=0;I2C_SEND_COMMAND(i++,I2C_SENS_VALUE);}else I2C_SEND_COMMAND(i,I2C_SENS_INFO);
-
-// This function sends Arduino's up time every second to Virtual Pin (5).
-// In the app, Widget's reading frequency should be set to PUSH. This means
-// that you define how often to send data to Blynk App.
-void SensEvent()
 {
-  GET_SENS_VALUE(sens_index); 
+  // Запрашиваем данные в Ардуино
+  if(Wire.requestFrom(ARDUINO_I2C_ADDR, 32))
+  {
+    i2c_read();    
+  }
+  GET_SENS_VALUE(sens_index)
+  if(!flags_num)
+  {
+    I2C_SEND_COMMAND(0,I2C_FLAG_NAMES)
+    return;
+  } 
+
+  if(flags_num<3)
+  {
+    FLAGS_DELETE
+    SENS_DELETE
+    table.clear();
+  }
 }
 
 void send_dtmf(char* buf)
@@ -330,7 +380,7 @@ void enter(char* dst, char* name, char* buffer)
   }
 }
 
-
+// Ввод данных через терминал
 uint8_t read_com()
 {
   char inChar;
@@ -365,11 +415,9 @@ uint8_t read_com()
 
 void setup()
 {
-	uint8_t i;
+  flags = 0;
 	
   Wire.begin(D1, D2);
-
-  FLAGS_NUM = sizeof(table_flags)/sizeof(table_flags[0]);
 
   // Debug console
 	SERIAL_BEGIN;
@@ -381,12 +429,14 @@ void setup()
   
   delay(2000);
 
+  // Попадаем сюда при удержании кнопки FLASH во время старта
   if(digitalRead(D3)==LOW)
   {
+    // Выодим данные Wi-Fi точки и токен Blynk 
     Serial.println(F("\nEnter SSID like SSID=your_ssid"));
     Serial.println(F("Enter Password like PASS=your_password"));
     Serial.println(F("Enter TOKEN like TOKEN=your_token"));
-    //memset(&wifi_data, 0, sizeof(wifi_data));
+
     while(1)
     {
       delay(3000);
@@ -399,19 +449,15 @@ void setup()
   DEBUG_PRINTLN("\nSSID: "+String(wifi_data.ssid)+"\nPASS: "+String(wifi_data.pass)+"\nTOKEN: "+String(wifi_data.token));
  
  	Blynk.begin(wifi_data.token, wifi_data.ssid, wifi_data.pass);
-  // You can also specify server:
-  //Blynk.begin(auth, ssid, pass, "blynk-cloud.com", 80);
-  //Blynk.begin(auth, ssid, pass, IPAddress(192,168,1,100), 8080);
 
   // This will print Blynk Software version to the Terminal Widget when
   // your hardware gets connected to Blynk Server
  	terminal.println("Blynk v" BLYNK_VERSION ": Device started");
 
-  	// Setup a function to be called every second
+  // Setup a function to be called every second
  	timer.setInterval(2000L, myTimerEvent);
-  timer.setInterval(1000L, SensEvent);
 
-  	// Setup table event callbacks
+  // Setup table event callbacks
  	table.onOrderChange([](int indexFrom, int indexTo)
  	{
    	terminal.print("Reordering: ");
@@ -421,46 +467,34 @@ void setup()
     terminal.flush();
  	});
 
-  for(uint8_t i = 0; i < SENS_NUM_MAX; i++) table_sens[i] = NULL;
-
  	table.onSelectChange([](int index, bool selected)
  	{
-    if(index < FLAGS_NUM)
+    if(index < flags_num)
    	{
    		uint8_t tmp = flags;
 
-   		selected ? SET_FLAG_ONE(index) : SET_FLAG_ZERO(index);  
-   		I2C_SEND_COMMAND(flags,I2C_FLAGS);   		
+   		selected ? SET_FLAG_ONE(index) : SET_FLAG_ZERO(index);
+      I2C_SEND_COMMAND(flags,I2C_FLAGS);   		
    		flags = tmp;
  	  }
     else
     {
-      index-=FLAGS_NUM;
-      DEBUG_PRINT(F("index="));
-      DEBUG_PRINTLN(index);
-      GET_SENS_VALUE(index);
+      index-=flags_num;
+      GET_SENS_VALUE(index)
     }
   });
 
-	//clean table at start
-  table.clear();
-
-  // adding rows to table
-  for(i = 0; i < FLAGS_NUM; i++)
-  {
-   	table.addRow(i, table_flags[i], GET_FLAG(i));
-   	ROW_SELECT(i, GET_FLAG(i));
-	}
-	terminal.print(F("Ready "));  //  "Готово"
-	terminal.print(F("IP address: "));  //  "IP-адрес: "
+	terminal.print(F("Ready "));
+	terminal.print(F("IP address: "));
 	terminal.println(WiFi.localIP());
 	terminal.flush();
 
-  EMAIL("Signalka is online.");
+  //clean table at start
+  table.clear();
 }
 
 void loop()
 {
 	Blynk.run();
-	timer.run(); // Initiates BlynkTimer  	
+	timer.run(); // Initiates BlynkTimer
 }
