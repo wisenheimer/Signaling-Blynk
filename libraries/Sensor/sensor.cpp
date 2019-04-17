@@ -201,12 +201,6 @@ void Sensor::get_info(TEXT *str)
     default:
       // добавляем число срабатываний датчика
       str->AddInt(count);
-#if (!RF_ENABLE) && (!RF_ENABLE)
-      str->AddChar('(');
-      // добавляем текущее состояние пина (0 или 1)
-      str->AddChar(value + '0');
-      str->AddChar(')');
-#endif
   }
   str->AddChar(' ');
 }
