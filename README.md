@@ -65,6 +65,22 @@ https://github.com/PaulStoffregen/OneWire
 
 Для ИК-датчика и ИК-приёмника https://github.com/z3t0/Arduino-IRremote
 
+Если при компиляции появляются непонятные ошибки, попробуйте сделать следующее:
+
+    Tools > Board > Boards Manager
+
+    Wait for downloads to finish.
+
+    Click on "Arduino AVR Boards".
+
+    Select 1.6.21 from the dropdown menu.
+
+    Click "Install".
+
+    Wait for installation to finish.
+
+    Click "Close".
+
 ## Создание приложения Blynk для телефона
 
 Для начала вам нужно скачать на свой телефон приложение Blynk для Arduino, ESP8266,RPi
