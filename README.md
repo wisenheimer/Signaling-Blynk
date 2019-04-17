@@ -31,7 +31,7 @@ Cигнализация модульная, можно выбрать ту ко�
 https://github.com/wisenheimer/Signaling-Blynk/blob/master/Signalka/Signalka.ino
 * Скетч для платы NodeMcu v3. Осуществляет управление Arduino через приложение на телефоне.
 https://github.com/wisenheimer/Signaling-Blynk/tree/master/NodeMCU
-* Скетч беспроводного Wi-Fi датчика на модуле nRF24L01
+* Скетч беспроводного датчика на модуле nRF24L01
 https://github.com/wisenheimer/Signaling-Blynk/blob/master/nRF24sensor/nRF24sensor.ino
 * Скетч беспроводного ИК-датчика
 https://github.com/wisenheimer/Signaling-Blynk/blob/master/IRsensor/IRsensor.ino
