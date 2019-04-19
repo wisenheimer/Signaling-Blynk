@@ -59,8 +59,8 @@
 #define SMTP_USER_NAME_AND_PASSWORD	F("\"login\",\"password\"") // Логин и пароль от почты
 #define SENDER_ADDRESS_AND_NAME		F("\"login@yandex.ru\",\"SIM800L\"")
 #define RCPT_ADDRESS_AND_NAME		F("\"login@mail.ru\",\"Ivan\"") // Адрес и имя получателя
-//#	define RCPT_CC_ADDRESS_AND_NAME		F("\"login@yandex.com\",\"Ivan\"") // Адрес и имя получателя (копия)
-//#	define RCPT_BB_ADDRESS_AND_NAME		F("\"login2@yandex.com\",\"Ivan\"") // Адрес и имя получателя (вторая копия)
+//#	define RCPT_CC_ADDRESS_AND_NAME		F("\"login@yandex.ru\",\"Ivan\"") // Адрес и имя получателя (копия)
+//#	define RCPT_BB_ADDRESS_AND_NAME		F("\"login2@yandex.ru\",\"Ivan\"") // Адрес и имя получателя (вторая копия)
 
 // Разрешаем спящий режим для экономии батареи при отключении электричества
 #define SLEEP_MODE_ENABLE 1
