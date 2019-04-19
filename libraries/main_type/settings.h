@@ -18,7 +18,10 @@
 #define MODEM_ENABLE	0 // Используем GSM модем SIM800L
 #define ESP8266_ENABLE	1 // Используем ESP8266+Blynk через i2c интерфейс
 //------------------------------------------------------------------------------
-// Коды для Wi-Fi датчиков, максимум 6 датчиков.
+// Коды для беспроводных датчиков. Можно менять на свои.
+// Эти коды передатчик будет отправлять приёмнику
+
+// Для датчиков c nRF24.
 #define RF0_CODE 0xAA
 #define RF1_CODE 0xBB
 #define RF2_CODE 0xCC
@@ -27,10 +30,10 @@
 #define RF5_CODE 0xFF
 
 // Для ИК - датчика
-#define IR_CODE	0x41038C7	// данный код передатчик будет отправлять приёмнику
+#define IR_CODE	0x41038C7
 #define IR_CODE_BIT_SIZE 32 // размер кода в битах
 
-// Используем watchdog (только с подходящим загрузчиком или без него в плате ардуино)
+// Используем watchdog (только с подходящим загрузчиком или без загрузчика в плате ардуино)
 #define WTD_ENABLE 0
 
 #include "main_type.h"
@@ -40,7 +43,7 @@
 // Если разрешить оба флага SET_FLAG_ONE(GPRS_ENABLE) и SET_FLAG_ONE(SMS_ENABLE),
 // приоритет отдаётся GPRS. Если не удастся установить GPRS соединение, сообщения
 // будут отправлены по SMS. Оба флага можно установить DTMF командами
-// GPRS_ON_OFF и SMS_ON_OFF (приведены ниже).
+// GPRS_ON_OFF и SMS_ON_OFF (см https://github.com/wisenheimer/Signaling-Blynk/blob/master/README.md).
 // SET_FLAG_ONE(CONNECT_ALWAYS) запрещает разрывать GPRS соединение для более
 // быстрой отправки писем (подходит для безлимитных тарифов).
 // Можно установить DTMF командой CONNECT_ON_OFF.
