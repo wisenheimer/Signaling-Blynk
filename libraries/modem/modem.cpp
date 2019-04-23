@@ -99,16 +99,20 @@ typedef struct PROGMEM
 
 ADD_OP(0, "MTS",     "mts");
 ADD_OP(1, "MEGAFON", "gdata");
-ADD_OP(2, "Tele2",   "");
-ADD_OP(3, "MOTIV",   "");
-ADD_OP(4, "Beeline", "beeline");
+ADD_OP(2, "MegaFon", "gdata");
+ADD_OP(3, "Tele2",   "");
+ADD_OP(4, "MOTIV",   "");
+ADD_OP(5, "Beeline", "beeline");
+ADD_OP(6, "Bee Line", "beeline");
 
 const OPERATORS op_base[] PROGMEM = {
   {op_0, user_0},
   {op_1, user_1},
   {op_2, user_2},
   {op_3, user_3},
-  {op_4, user_4}
+  {op_4, user_4},
+  {op_5, user_5},
+  {op_6, user_6}
 };
 
 // Условия для рестарта модема
