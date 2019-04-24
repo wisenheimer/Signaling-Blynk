@@ -195,6 +195,8 @@ https://play.google.com/store/apps/details?id=cc.blynk
 
 #define	BOOT_PIN  5 // перезагрузка модема SIM800L
 
+#define RADAR_PIN 6 // микроволновый датчик движения RCWL-0516
+
 ### Пины для подключения модуля RF24L01 по SPI интерфейсу
 
 #define	CE_PIN    9
