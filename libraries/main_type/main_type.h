@@ -49,6 +49,7 @@
 #define	POWER_PIN 3 // отслеживает наличие питания
 #define	DOOR_PIN  4 // датчик двери (геркон). Один конец на GND, второй на цифровой пин arduino.
 #define	BOOT_PIN  5 // перезагрузка модема
+#define RADAR_PIN 6 // микроволновый датчик движения RCWL-0516
 // Пины для подключения модуля RF24L01 по SPI интерфейсу
 #define	CE_PIN    9
 #define	CSN_PIN   10
