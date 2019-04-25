@@ -245,10 +245,6 @@ https://play.google.com/store/apps/details?id=cc.blynk
 	
 **Sensor(DOOR_PIN, DS18B20, "18B20", LOW, 10, 45)**
 	
-Датчик температуры термистор. Заведён на плате на пин А7
-
-**Sensor(A7, TERMISTOR, "TERM", LOW, 10, 45)**
-
 Датчик температуры и влажности DHT11, DHT21 или DHT22.
 
 **Sensor(PIN, DHT11, "DHT")**
@@ -258,6 +254,10 @@ https://play.google.com/store/apps/details?id=cc.blynk
 **Sensor(PIN, DHT22, "DHT")**
 
 ### Датчики с аналоговым выходом
+
+Датчик температуры термистор. Заведён на плате на пин А7
+
+**Sensor(A7, TERMISTOR, "TERM", LOW, 10, 45)**
 
 Датчик газа MQ-2. Порог срабатывания задан равным 120.
 
