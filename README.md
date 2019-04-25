@@ -249,6 +249,14 @@ Sensor(DOOR_PIN, DS18B20,	"18B20", LOW, 10, 45)
 
 Sensor(A7, TERMISTOR, "TERM", LOW, 10, 45)
 
+Датчик температуры и влажности DHT11, DHT21 или DHT22.
+
+Sensor(pin, DHT11, "DHT")
+
+Sensor(pin, DHT21, "DHT")
+
+Sensor(pin, DHT22, "DHT")
+
 ### Все датчики, где на выходе либо низкий, либо высокий логический уровень
 	
 Датчик движения RCWL-0516
