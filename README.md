@@ -80,6 +80,8 @@ https://github.com/PaulStoffregen/OneWire
 
 Для ИК-датчика и ИК-приёмника https://github.com/z3t0/Arduino-IRremote
 
+Для 7 сигментного индикатора TM1637 https://github.com/Seeed-Studio/Grove_4Digital_Display
+
 Если при компиляции появляются непонятные ошибки, попробуйте сделать следующее:
 
     Tools > Board > Boards Manager
