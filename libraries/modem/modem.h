@@ -4,11 +4,11 @@
 #include "text.h"
 #include "my_sensors.h"
 
-#if MODEM_ENABLE
-#   define RING_TO_ADMIN(index) if(GET_FLAG(RING_ENABLE)){SERIAL_PRINT(F("ATD>"));SERIAL_PRINT(index);SERIAL_PRINTLN(';');}
-#else
-#   define RING_TO_ADMIN(index)
+#if TM1637_ENABLE
+#   include "clock.h"
 #endif
+
+#define RING_TO_ADMIN(index,flag) if(GET_FLAG(RING_ENABLE) && flag){SERIAL_PRINT(F("ATD>"));SERIAL_PRINT(index);SERIAL_PRINTLN(';');}
 
 #define NLENGTH 14 // Max. length of phone number 
 #define TLENGTH 21 // Max. length of text for number
@@ -29,18 +29,14 @@ class MODEM
     TEXT *email_buffer;
     void init();
     void wiring();
-#if MODEM_ENABLE
     void email();
     ABONENT_CELL admin; // телефон админа
-#endif
 
   private:
-#if MODEM_ENABLE
     ABONENT_CELL last_abonent;
     uint8_t phone_num;
     uint8_t gsm_operator;
     uint8_t cell_num;
-#endif
     TEXT *text;    
     uint8_t answer_flags;
     uint8_t flag_sensor_enable;

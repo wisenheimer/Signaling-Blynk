@@ -1,3 +1,11 @@
+/*
+ * Модуль часов на 7сигментном индикаторе TM1637
+ * @Author: wisenheimer
+ * @Date:   2019-05-28 10:00:00
+ * @Last Modified by:  
+ * @Last Modified time:
+ */
+
 #include "TM1637.h"  // http://www.seeedstudio.com/wiki/File:DigitalTube.zip
 #include "settings.h"    
 

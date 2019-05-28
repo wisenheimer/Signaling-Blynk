@@ -91,6 +91,7 @@ enum common_flag {
 #define I2C_FLAGS       0x02
 #define I2C_SENS_INFO 	0x03
 #define I2C_FLAG_NAMES  0x04
+#define I2C_DTMF        0x05
 
 #define START_BYTE		  0x91
 #define END_BYTE		    0x92

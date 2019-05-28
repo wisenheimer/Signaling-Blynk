@@ -15,12 +15,14 @@ enum {
     ADMIN_NUMBER_DEL, // 9# - админ больше не админ
     SM_CLEAR,     // 10# - удалить все номера с симкарты
     MODEM_RESET,  // 11# - перезагрузка модема
-    BAT_CHARGE,   // 12# - показывает заряд батареи в виде строки
+    ESP_RESET,    // 12# - перезагрузка модема
+    BAT_CHARGE,   // 13# - показывает заряд батареи в виде строки
                   //  +CBC: 0,100,4200
                   // где 100 - процент заряда
                   // 4200 - напряжение на батарее в мВ.
-    CONNECT_ON_OFF, // 13# - Инвертирует флаг CONNECT_ALWAYS
-    SENS_GET_NAMES  // 14# - Возвращает имена датчиков
+    CONNECT_ON_OFF, // 14# - Инвертирует флаг CONNECT_ALWAYS
+    SENS_GET_NAMES, // 15# - Возвращает имена датчиков
+    SYNC_TIME       // 16# - синхронизация времени модема и часов
   };
 
 FLAGS
@@ -40,6 +42,8 @@ enum answer {get_ip, ip_ok, gprs_connect, email_end, smtpsend, smtpsend_end, adm
 
 #define OK   "OK"
 #define ERR  "ERROR"
+
+#define GET_TIME F("AT+CCLK?")
 
 // определить количество занятых записей и их общее число
 #define SIM_RECORDS_INFO  F("AT+CPBS?")
@@ -78,13 +82,15 @@ uint32_t opros_time;
 
 enum {ADMIN};
 const char cell_name_0[] PROGMEM = "\"ADMIN\"";
+//const char cell_name_0[] PROGMEM = "\"Admin\"";
 const char* const abonent_name[] PROGMEM = {cell_name_0};
 
 //Эти сообщения пересылаются на e-mail
 const char str_0[] PROGMEM = "+CUSD:";   
 const char str_1[] PROGMEM = "+CBC:";
 const char str_2[] PROGMEM = "ALARM";
-const char* const string[] PROGMEM = {str_0, str_1, str_2};
+const char str_3[] PROGMEM = "+CCLK:";
+const char* const string[] PROGMEM = {str_0, str_1, str_2, str_3};
 
 uint8_t op_count; // число операторов 
 
@@ -179,10 +185,8 @@ extern "C"{
 
 MODEM::MODEM()
 {
-#if MODEM_ENABLE
   op_count = sizeof(op_base)/sizeof(OPERATORS);
   gsm_operator = op_count;
-#endif
   // зуммер
   BEEP_INIT;
   // Устанавливаем скорость связи Ардуино и модема
@@ -204,21 +208,17 @@ void MODEM::init()
   text         = new TEXT(160);
   email_buffer = new TEXT(255);
 
-#if MODEM_ENABLE
   phone_num    = 0;
   cell_num     = 0;
   ADMIN_PHONE_SET_ZERO;
   SET_FLAG_ONE(RING_ENABLE);
   OTCHET_INIT
-#endif
 }
 
 void MODEM::parser()
 {
   char *p, *pp;
   char ch;
-
-#if MODEM_ENABLE
 
   if(READ_COM_FIND(OK)!=NULL)
   {
@@ -308,6 +308,7 @@ void MODEM::parser()
     {
       if(READ_COM_FIND_RAM(admin.phone)==NULL && admin.phone[0]) // не админ
       {
+        RING_BREAK;
         if(GET_FLAG(GUARD_ENABLE)) DTMF[0] = GUARD_OFF;
         else DTMF[0] = GUARD_ON;
       }
@@ -385,9 +386,29 @@ void MODEM::parser()
 
   if(READ_COM_FIND("DIALTON")!=NULL)
   {
-    RING_TO_ADMIN(admin.index);
+    RING_TO_ADMIN(admin.index, admin.phone[0]);
     return;    
   }
+
+#if TM1637_ENABLE
+  // получаем время  +CCLK: "04/01/01,03:36:04+12"
+  if ((p=READ_COM_FIND("+CCLK:"))!=NULL)
+  {
+    char ch;
+    uint8_t time[3];
+    p+=17;
+
+    for(uint8_t i = 0; i < 3; i++)
+    {
+      ch = *(p+2);
+      *(p+2) = 0;
+      time[i] = atoi(p);
+      *(p+2) = ch;
+      p+=3;
+    }
+    clock_set(time);
+  }
+#endif
 
   for(uint8_t i = 0; i < 6; i++)
   {
@@ -408,7 +429,7 @@ void MODEM::parser()
     }
   }
 
-  for(uint8_t i = 0; i < 3; i++)
+  for(uint8_t i = 0; i < 4; i++)
   {
     if((p=READ_COM_FIND_P(string[i]))!=NULL)
     {
@@ -466,7 +487,7 @@ void MODEM::parser()
 
   // получаем смс
   // Выполнение любой AT+ команды
-  if ((p=READ_COM_FIND("AT+"))!=NULL)
+  if ((p=READ_COM_FIND("AT+"))!=NULL || (p=READ_COM_FIND("at"))!=NULL)
   {
     if (GET_FLAG_ANSWER(admin_phone))
     {
@@ -476,15 +497,18 @@ void MODEM::parser()
     
     return;      
   }
-//////////////////////////////////////////////////////////// 
 
-#endif
+//////////////////////////////////////////////////////////// 
 
   if((p = READ_COM_FIND("DTMF:"))!=NULL) //+DTMF: 2
   { 
-    DEBUG_PRINTLN();
-    DEBUG_PRINT(p);
     p+=6;
+
+    DEBUG_PRINT("p=");
+    DEBUG_PRINTLN(p);
+
+    DEBUG_PRINT("dtmf=");
+    DEBUG_PRINTLN(dtmf);
    
     if(*p == '#')
     {
@@ -559,15 +583,19 @@ void MODEM::parser()
   }   
 }
 
-#if MODEM_ENABLE
-
 void MODEM::reinit()
 {
+  uint8_t cnt = 0;
+
   DEBUG_PRINTLN(F("BOOT"));
 
   POWER_ON; // Включение GSM модуля
 
-  SET_FLAG_ONE(MODEM_NEED_INIT);
+  if(GET_MODEM_ANSWER("RDY", 5000))
+  {
+    sim800_enable = true;
+    SET_FLAG_ONE(MODEM_NEED_INIT);
+  }
 
   reset_count = 0;
   gprs_init_count = 0;
@@ -584,7 +612,7 @@ void MODEM::reinit_end()
     const __FlashStringHelper* cmd[] = {
       F("AT+DDET=1"),         // вкл. DTMF. 
       F("ATS0=0"),            // устанавливает количество гудков до автоответа
-      F("AT+CLTS=1"),         // синхронизация времени по сети
+      F("AT+CLTS=1;&W"),         // синхронизация времени по сети
       F("ATE0"),              // выключаем эхо
       F("AT+CLIP=1"),         // Включаем АОН
       F("AT+CMGF=1"),         // Формат СМС = ASCII текст
@@ -607,13 +635,13 @@ void MODEM::reinit_end()
       if(!GET_MODEM_ANSWER(OK, 10000)) return;
     }   
 
-    if(!admin.phone[0]) DTMF[0] = EMAIL_ADMIN_PHONE;
+    DTMF[0] = SYNC_TIME;
 
     timeRegularOpros = millis();        
 
     DEBUG_PRINTLN(F("init end"));
 
-    SET_FLAG_ZERO(MODEM_NEED_INIT);  
+    SET_FLAG_ZERO(MODEM_NEED_INIT);
   }     
 }
 
@@ -630,6 +658,13 @@ void MODEM::sleep()
     // Прерывание для RING
     attachInterrupt(0, ring, LOW); //Если на 0-вом прерываниии - ноль, то просыпаемся.
       
+    I2C_OFF
+
+#if TM1637_ENABLE
+    digitalWrite(CLK, LOW);
+    digitalWrite(DIO, LOW);         
+#endif
+
     SERIAL_PRINTLN(F("AT+CSCLK=2")); // Режим энергосбережения
        
     SERIAL_FLUSH;
@@ -653,8 +688,12 @@ void MODEM::sleep()
       SERIAL_PRINTLN(F("AT+CSCLK?"));
     }
     while(!GET_MODEM_ANSWER("CSCLK: 0", 1000));
+
+    I2C_ON
                 
     if(GET_FLAG(EMAIL_ENABLE)) email_buffer->AddText_P(PSTR("WakeUp:"));
+
+    DTMF[0] = SYNC_TIME;
 
 #if WTD_ENABLE
     wdt_enable(WDTO_8S);
@@ -783,8 +822,6 @@ bool MODEM::read_com(const char* answer)
   return false;
 }
 
-#endif
-
 #define DELETE_PHONE(index)    {SERIAL_PRINT(F("AT+CPBW="));SERIAL_PRINTLN(index);}
 #define FLAG_STATUS(flag,name) email_buffer->AddText_P(PSTR(name));email_buffer->AddInt(GET_FLAG(flag));email_buffer->AddChar(' ')
 
@@ -792,11 +829,14 @@ void MODEM::flags_info()
 {
   FLAG_STATUS(GUARD_ENABLE,   "GUARD=");
   FLAG_STATUS(EMAIL_ENABLE,   "EMAIL=");
-#if MODEM_ENABLE
-  FLAG_STATUS(RING_ENABLE,    "TEL=");
-  FLAG_STATUS(CONNECT_ALWAYS, "CONNECT=");
-  FLAG_STATUS(SMS_ENABLE,     "SMS=");
-#endif
+  
+  if (sim800_enable)
+  {
+    FLAG_STATUS(RING_ENABLE,    "TEL=");
+    FLAG_STATUS(CONNECT_ALWAYS, "CONNECT=");
+    FLAG_STATUS(SMS_ENABLE,     "SMS=");
+  }
+  
   email_buffer->AddChar('\n');
 }
 
@@ -804,73 +844,74 @@ void MODEM::wiring() // прослушиваем телефон
 {
   uint8_t tmp;
 
-#if MODEM_ENABLE
-
   read_com(NULL);
 
-  // Опрос модема
-  if(millis() - timeRegularOpros > opros_time)
+  if (sim800_enable)
   {
-    SET_FLAG_ANSWER_ZERO(admin_phone);
-
-    if(reset_count > RESET_COUNT) DTMF[0]=MODEM_RESET;
-
-    if(gprs_init_count > RESET_COUNT)
+    // Опрос модема
+    if(millis() - timeRegularOpros > opros_time)
     {
-      // если gprs не подключается, переходим на смс
-      if(GET_FLAG(SMS_ENABLE))
+      SET_FLAG_ANSWER_ZERO(admin_phone);
+
+      if(reset_count > RESET_COUNT) DTMF[0]=MODEM_RESET;
+
+      if(gprs_init_count > RESET_COUNT)
       {
-        gprs_init_count = 0;
-        SET_FLAG_ZERO(EMAIL_ENABLE);
-        GPRS_DISCONNECT
-      } 
-      else DTMF[0]=MODEM_RESET;
-    }   
-   
-    reinit_end();
-
-    reset_count++;
-
-    if(!GET_FLAG(MODEM_NEED_INIT))
-    {
-      // Есть данные для отправки
-      if(email_buffer->filling() && flag_esp8266==false)
-      {      
-        if(GET_FLAG(EMAIL_ENABLE))
+        // если gprs не подключается, переходим на смс
+        if(GET_FLAG(SMS_ENABLE))
         {
-          if(gsm_operator == op_count)
-          {
-            SERIAL_PRINTLN(F("AT+COPS?"));   
-          }
-          else
-          {
-            GPRS_CONNECT(op_base[gsm_operator])
-            else GPRS_GET_IP
-          }                 
-        }
-        else SEND_SMS
-        else email_buffer->Clear();                  
+          gprs_init_count = 0;
+          SET_FLAG_ZERO(EMAIL_ENABLE);
+          GPRS_DISCONNECT
+        } 
+        else DTMF[0]=MODEM_RESET;
       }
-      else
+
+      if(!GET_FLAG(MODEM_NEED_INIT) && !admin.phone[0]) DTMF[0]=EMAIL_ADMIN_PHONE;
+
+      reinit_end();
+
+      reset_count++;
+
+      if(!GET_FLAG(MODEM_NEED_INIT))
       {
-        sleep();
-        // проверяем непрочитанные смс и уровень сигнала
-        SERIAL_PRINTLN(F("AT+CMGL=\"REC UNREAD\",1;+CSQ"));
+        // Есть данные для отправки
+        if(email_buffer->filling() && esp8266_enable==false)
+        {      
+          if(GET_FLAG(EMAIL_ENABLE))
+          {
+            if(gsm_operator == op_count)
+            {
+              SERIAL_PRINTLN(F("AT+COPS?"));   
+            }
+            else
+            {
+              GPRS_CONNECT(op_base[gsm_operator])
+              else GPRS_GET_IP
+            }                 
+          }
+          else SEND_SMS
+          else email_buffer->Clear();                  
+        }
+        else
+        {
+          sleep();
+          // проверяем непрочитанные смс и уровень сигнала
+          SERIAL_PRINTLN(F("AT+CMGL=\"REC UNREAD\",1;+CSQ"));
+        }
       }
-    } 
-        
-    timeRegularOpros = millis();       
+
+      timeRegularOpros = millis();       
+    }
   }
-
-#else
-
-  if(text->filling())
+  else
   {
-    parser();
-    text->Clear();
-  }  
-
-#endif
+    if(text->filling())
+    {
+      parser();
+      text->Clear();
+    }
+  }
 
   if(GET_FLAG(INTERRUPT))
   {
@@ -880,8 +921,8 @@ void MODEM::wiring() // прослушиваем телефон
 
   if(DTMF[0])
   {
+    DEBUG_PRINT(F("DTMF=")); DEBUG_PRINTLN(DTMF[0]);
     BEEP;
-#if MODEM_ENABLE
     if(DTMF[1])
     {
       SERIAL_PRINT(F("AT+CUSD=1,\"#"));
@@ -889,7 +930,6 @@ void MODEM::wiring() // прослушиваем телефон
       SERIAL_PRINT(DTMF[0]); SERIAL_PRINTLN(F("#\""));
     }
     else    
-#endif
     switch (DTMF[0])
     {
       case GUARD_ON:
@@ -928,14 +968,11 @@ void MODEM::wiring() // прослушиваем телефон
         }
         break;
         case MODEM_RESET:
-#if MODEM_ENABLE
-        reinit();
-#endif
-#if ESP8266_ENABLE
-        I2C_RESET
-#endif
+          reinit();
         break;
-#if MODEM_ENABLE      
+        case ESP_RESET:
+          I2C_RESET;
+        break;
       case TEL_ON_OFF:
         INVERT_FLAG(RING_ENABLE);
         flags_info();     
@@ -982,16 +1019,16 @@ void MODEM::wiring() // прослушиваем телефон
           //SERIAL_PRINTLN(SIM_RECORDS_INFO);
         }
         break;
+      case SYNC_TIME:
+        SERIAL_PRINTLN(GET_TIME);
+        break;
       default:
         SERIAL_PRINT(F("AT+CUSD=1,\"#"));
         SERIAL_PRINT(DTMF[0]); SERIAL_PRINTLN(F("#\""));
-#endif
     }
     DTMF[0] = 0;
     DTMF[1] = 0;
     
     dtmf_index = 0;
   }
-
-  I2C_OPROS
 }

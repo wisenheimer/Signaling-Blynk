@@ -1,12 +1,12 @@
 //**********************************************************
 //************************** I2C ***************************
 //**********************************************************
-bool flag_esp8266 = false;
+bool esp8266_enable = false;
+bool sim800_enable = false;
 
-#if ESP8266_ENABLE
-
-#define I2C_RESET {digitalWrite(A2,LOW);digitalWrite(A3,LOW);delay(1000);digitalWrite(A2,HIGH);digitalWrite(A3,HIGH);i2c_time=millis();flag_esp8266=false;}
-#define I2C_OPROS if(millis()-i2c_time>30000)I2C_RESET
+#define I2C_OFF   digitalWrite(A3,LOW);esp8266_enable=false;
+#define I2C_ON    digitalWrite(A3,HIGH);
+#define I2C_RESET {I2C_OFF;delay(1000);I2C_ON}
 
 #include <Wire.h>
 
@@ -17,7 +17,6 @@ TEXT* i2c_rx_buf;
 
 uint8_t i2c_enable;
 uint16_t* dtmf0;
-uint32_t i2c_time = 0;
 
 extern MY_SENS *sensors;
 
@@ -49,60 +48,60 @@ void receiveEvent(int numBytes)
       {
         i+=sizeof(i2c_cmd);
 
-        if(cmd->cmd==I2C_SENS_VALUE)
+        switch (cmd->cmd)
         {
-          if(GET_FLAG(GUARD_ENABLE))
-          {
-            i2c_sens_value sens_value;
-
-            sens_value.type = cmd->type;
-            sens_value.index = cmd->index;
-            sens_value.value = sensors->GetValueByIndex(cmd->index);
-            uint8_t size = sizeof(i2c_sens_value);
-            char* p = (char*)&sens_value;
-            for(i = 0; i < size; i++)
+          case I2C_SENS_VALUE:
+            if(GET_FLAG(GUARD_ENABLE))
             {
-              i2c_tx_buf->AddChar(*(p+i));
+              i2c_sens_value sens_value;
+              sens_value.type = cmd->type;
+              sens_value.index = cmd->index;
+              sens_value.value = sensors->GetValueByIndex(cmd->index);
+              uint8_t size = sizeof(i2c_sens_value);
+              char* p = (char*)&sens_value;
+              for(i = 0; i < size; i++)
+              {
+                i2c_tx_buf->AddChar(*(p+i));
+              }
             }
-          } 
-        }
-        else
-        if(cmd->cmd==I2C_SENS_INFO)
-        {
-          if(GET_FLAG(GUARD_ENABLE))
-          {
-            *dtmf0 = SENS_GET_NAMES;
-          } 
-        }
-        else
-        if(cmd->cmd==I2C_FLAG_NAMES)
-        {
-          i2c_tx_buf->AddText_P(PSTR(I2C_FLAG));            
-          i2c_tx_buf->AddText_P(PSTR(" ALARM GUARD EMAIL"));              
-#if MODEM_ENABLE
-          i2c_tx_buf->AddText_P(PSTR(" GPRS SMS RING"));
-#endif
-          i2c_tx_buf->AddChar('\n');           
-        }
-        else
-        if(cmd->cmd==I2C_FLAGS)
-        {
-          i+=sizeof(i2c_cmd);
-          if(GET_FLAG(GUARD_ENABLE))
-          {
-            if(bitRead(cmd->index,GUARD_ENABLE)==0)
+          break; 
+          case I2C_SENS_INFO:
+            if(GET_FLAG(GUARD_ENABLE))
             {
-              bitWrite(cmd->index,GUARD_ENABLE,HIGH);
-              *dtmf0 = GUARD_OFF;
+              *dtmf0 = SENS_GET_NAMES;
             } 
-          }
-          else
-          if(bitRead(cmd->index,GUARD_ENABLE))
-          {
-            bitWrite(cmd->index,GUARD_ENABLE,LOW);
-            *dtmf0 = GUARD_ON;            
-          }
-          flags = cmd->index;          
+          break;
+          case I2C_FLAG_NAMES:
+            i2c_tx_buf->AddText_P(PSTR(I2C_FLAG));            
+            i2c_tx_buf->AddText_P(PSTR(" ALARM GUARD EMAIL"));              
+          
+            if (sim800_enable)
+            {
+              i2c_tx_buf->AddText_P(PSTR(" GPRS SMS RING"));
+            }
+
+            i2c_tx_buf->AddChar('\n');           
+          break;
+          case I2C_FLAGS:
+            i+=sizeof(i2c_cmd);
+            if(GET_FLAG(GUARD_ENABLE))
+            {
+              if(bitRead(cmd->index,GUARD_ENABLE)==0)
+              {
+                bitWrite(cmd->index,GUARD_ENABLE,HIGH);
+                *dtmf0 = GUARD_OFF;
+              } 
+            }
+            else
+            if(bitRead(cmd->index,GUARD_ENABLE))
+            {
+              bitWrite(cmd->index,GUARD_ENABLE,LOW);
+              *dtmf0 = GUARD_ON;            
+            }
+            flags = cmd->index;
+          break;
+          case I2C_DTMF:
+            *dtmf0 = cmd->index;             
         }
         continue;
       }
@@ -119,9 +118,7 @@ void requestEvent()
   uint8_t l;
   char buf[32];
 
-  flag_esp8266 = true;
-
-  i2c_time = millis();
+  esp8266_enable = true;
 
   memset(buf, 0, 32);
 
@@ -146,10 +143,3 @@ void i2c_init()
   Wire.onReceive(receiveEvent); /* register receive event */
   Wire.onRequest(requestEvent); /* register request event */
 }
-
-#else
-
-# define I2C_OPROS
-# define I2C_INIT
-
-#endif

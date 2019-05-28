@@ -42,8 +42,8 @@
  * Прошивать как есть
  * @Author: wisenheimer
  * @Date:   2019-04-17 8:30:00
- * @Last Modified by:   
- * @Last Modified time:
+ * @Last Modified by: wisenheimer 
+ * @Last Modified time: 2019-05-28 10:00:00
  *************************************************************/
 
 /* Comment this out to disable prints and save space */
@@ -133,7 +133,7 @@ bool parser()
       i2c_sens_value sens_value;
       memcpy(&sens_value, p, len);
 
-      DEBUG_PRINT(F("sens_type:"));
+      DEBUG_PRINT(F("\nsens_type:"));
       DEBUG_PRINTLN(sens_value.type, HEX);
       DEBUG_PRINT(F("sens_index:"));
       DEBUG_PRINTLN(sens_value.index);
@@ -180,7 +180,7 @@ uint8_t flags_read_names(char* cmd, uint8_t shift)
   if(pos!=NULL)
   {
     p=pos+strlen(cmd);
-              
+          
     while(*p==' ')
     {
       i = 0;
@@ -190,8 +190,9 @@ uint8_t flags_read_names(char* cmd, uint8_t shift)
          
       table.addRow(shift+index, table_flags[index], 0);
       ROW_SELECT(shift+index, 0);
-      index++;      
+      index++;  
     }
+    flags = 0xFF;
   }
 
   return index;
@@ -223,7 +224,7 @@ uint8_t sens_read_names(char* cmd, uint8_t shift)
         terminal.flush();
         exit(1);
       }
-      
+
       strcpy(sensors[index].name, buf);
       table.addRow(shift+index, buf, 0);
       ROW_SELECT(shift+index, 0);
@@ -257,33 +258,39 @@ void i2c_read()
       count--;
       if(count == 0)
       {
-        start_flag = false;
-
-        if(!flags_num) flags_num=flags_read_names(I2C_FLAG, 0);
-        else
-        if(!sens_num)
-        {
-          sens_num=sens_read_names(I2C_NAME, flags_num);
-          //if(sens_num) values = new float [sens_num];
-        }        
-        
+        start_flag = false; 
         parser();
-#if DEBUG_MODE
-        PRINT_IN_BUFFER(F("PRINT:"))
-#endif
-        if(in_index==0) return;
-        terminal.write(in_buffer);
-        terminal.flush();
-        EMAIL(in_buffer);
-        memset(in_buffer, 0, IN_BUF_SIZE);
-        in_index = 0;        
       } 
       continue;      
     }
     
     if(start_flag)
     {
-      if(in_index < IN_BUF_SIZE) in_buffer[in_index++] = inChar;      
+      if(in_index < IN_BUF_SIZE) in_buffer[in_index++] = inChar;
+
+      if(inChar=='\n')
+      {
+        if(!flags_num)
+        {
+          flags_num=flags_read_names(I2C_FLAG, 0);
+        } 
+        else
+        if(!sens_num)
+        {
+          sens_num=sens_read_names(I2C_NAME, flags_num);
+        }
+
+        if(in_index==0) return;
+
+        parser();
+          
+        if(in_index==0) return;
+
+        terminal.write(in_buffer);
+        terminal.flush();
+        memset(in_buffer, 0, IN_BUF_SIZE);
+        in_index = 0;
+      }      
     }
     else if(count==2)
     {
@@ -316,13 +323,15 @@ void myTimerEvent()
   {
     i2c_read();    
   }
+
   GET_SENS_VALUE(sens_index)
+  
   if(!flags_num)
   {
     I2C_SEND_COMMAND(0,I2C_FLAG_NAMES)
     return;
-  } 
-
+  }
+  
   if(flags_num<3)
   {
     FLAGS_DELETE
@@ -331,26 +340,22 @@ void myTimerEvent()
   }
 }
 
-void send_dtmf(char* buf)
-{
-  while(*buf)
-  {        
-    Wire.beginTransmission(ARDUINO_I2C_ADDR);
-    Wire.write("DTMF: ");
-    Wire.write(*buf++);
-    Wire.write('\n');
-    Wire.endTransmission();
-    delay(200);
-  }  
-}
-
 // You can send commands from Terminal to your hardware. Just use
 // the same Virtual Pin as your Terminal Widget
 BLYNK_WRITE(TERMINAL_PIN)
 {
   if(strstr((char*)param.getBuffer(), "#") != NULL)
   { // Это DTMF команда
-    send_dtmf((char*)param.getBuffer());
+    char* p = (char*)param.getBuffer();
+    uint8_t i = 0;
+    char buf[4];
+    while(isdigit(*p) && i < 3) buf[i++] = *p++;
+    buf[i] = 0;
+    if(i)
+    {
+      i = atoi(buf);
+      I2C_SEND_COMMAND(i,I2C_DTMF);
+    }    
   }
   else
   {

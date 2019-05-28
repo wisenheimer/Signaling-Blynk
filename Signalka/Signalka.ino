@@ -1,12 +1,12 @@
 /*
  * Прошивка для ардуино сигнализации.
  * Перед прошивкой настроить файл
- * https://github.com/wisenheimer/Signaling-Blynk/blob/master/libraries/main_type/settings.h
+ * libraries/main_type/settings.h
  *
  * @Author: wisenheimer
  * @Date:   2019-03-29 12:30:00
- * @Last Modified by:   
- * @Last Modified time:
+ * @Last Modified by: wisenheimer  
+ * @Last Modified time: 2019-05-28 10:00:00
  */
 
 #include "modem.h"
@@ -35,14 +35,12 @@ MODEM *phone;
 MY_SENS *sensors = NULL;
 
 // Размер массива должен равняться количеству датчиков!
-# define SENS_NUM 2
+# define SENS_NUM 3
 // Сюда надо вписать свои датчики. Описание смотрите в 
 // https://github.com/wisenheimer/Signaling-Blynk/blob/master/README.md
 Sensor sens[SENS_NUM]={
-  //Sensor(DOOR_PIN, DIGITAL_SENSOR,"DOOR", HIGH,0),
-  Sensor(DOOR_PIN, DS18B20,       "18B20",LOW, 10, 45),
-  //Sensor(6, CHECK_DIGITAL_SENSOR, "FIRE", HIGH),
-  //Sensor(A7,       TERMISTOR,     "TERM", LOW, 10, 45),
+  Sensor(DOOR_PIN,  DIGITAL_SENSOR,"DOOR", HIGH,0),
+  Sensor(DOOR_PIN,  DS18B20,       "18B20",LOW, 10, 45),
   Sensor(RADAR_PIN, DIGITAL_SENSOR,"RADAR",LOW),
 #if RF_ENABLE // Датчик с радиомодулем nRF24L01
   Sensor(          RF24_SENSOR,   "nRF_0",RF0_CODE),
@@ -52,7 +50,7 @@ Sensor sens[SENS_NUM]={
 
 #define ALARM_MAX_TIME 60 // продолжительность тревоги в секундах, после чего счётчики срабатываний обнуляются
 // активируем флаг тревоги для сбора информации и отправки e-mail
-#define ALARM_ON  if(!GET_FLAG(ALARM)){SET_FLAG_ONE(ALARM);AlarmTime=ALARM_MAX_TIME;RING_TO_ADMIN(phone->admin.index) \
+#define ALARM_ON  if(!GET_FLAG(ALARM)){SET_FLAG_ONE(ALARM);AlarmTime=ALARM_MAX_TIME;RING_TO_ADMIN(phone->admin.index,phone->admin.phone[0]) \
                   phone->email_buffer->AddText_P(PSTR(" ALARM!"));sensors->GetInfo(phone->email_buffer); \
                   DEBUG_PRINTLN(phone->email_buffer->GetText());}
 // по окончании времени ALARM_MAX_TIME обнуляем флаг тревоги и отправляем e-mail с показаниями датчиков
@@ -100,6 +98,10 @@ void setup()
 #if IR_ENABLE
   IRrecvInit();
 #endif
+
+#if TM1637_ENABLE
+  clock_init();
+#endif
 }
 
 void timer(uint16_t time)
@@ -109,6 +111,10 @@ void timer(uint16_t time)
 #endif 
   if(millis() - msec >= time)
   {
+#if TM1637_ENABLE
+    clock();
+#endif
+    
     DEBUG_PRINT('.');
     msec = millis();
 
