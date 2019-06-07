@@ -5,6 +5,7 @@ Signaling Arduino+esp8266+SIM800L+Blynk
 
 Прошивка создана для платы из этого проекта: https://easyeda.com/MihAlex/signaling-Arduino-SIM800L
 Плата постоянно совершенствуется, и может изменяться.
+Более компактная версия платы https://easyeda.com/MihAlex/signaling-Arduino-SIM800L_copy
 
 **Обновления:**
 
