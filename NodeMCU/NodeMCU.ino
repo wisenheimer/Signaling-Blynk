@@ -43,7 +43,7 @@
  * @Author: wisenheimer
  * @Date:   2019-04-17 8:30:00
  * @Last Modified by: wisenheimer 
- * @Last Modified time: 2019-05-28 10:00:00
+ * @Last Modified time: 2019-07-28 20:00:00
  *************************************************************/
 
 /* Comment this out to disable prints and save space */
@@ -76,15 +76,16 @@
 
 #define I2C_SET_COMMAND(str,i,command) {str.type=I2C_DATA;str.index=i;str.cmd=command;}
 #define I2C_SEND_COMMAND(index,cmd) {struct i2c_cmd str;I2C_SET_COMMAND(str,index,cmd);I2C_WRITE((uint8_t*)&str,sizeof(str));}
-#define GET_SENS_VALUE(i) if(GET_FLAG(GUARD_ENABLE))if(sens_num){if(i>=sens_num)i=0;I2C_SEND_COMMAND(i++,I2C_SENS_VALUE);}else if(flags_num)I2C_SEND_COMMAND(i,I2C_SENS_INFO)
+#define GET_SENS_VALUE(i) if(sens_num){if(i>=sens_num)i=0;I2C_SEND_COMMAND(i++,I2C_SENS_VALUE);}else if(flags_num)I2C_SEND_COMMAND(i,I2C_SENS_INFO)
 
 #define FLAGS_DELETE flags_num=0;
-#define SENS_DELETE  while(sens_num){sens_num--;delete[] sensors[sens_num].name;}
 
 // Задаём максимальное количество датчиков
-#define SENS_NUM_MAX  10
+#define SENS_NUM_MAX  8
 // Задаём максимальное количество флагов
-#define FLAGS_NUM_MAX 6
+#define FLAGS_NUM_MAX 5
+// Максимальная длина имени флага или датчика, знаков
+#define NAME_LEN 20
 
 struct{
   char ssid[32];
@@ -101,20 +102,18 @@ BLYNK_ATTACH_WIDGET(table, TABLE_PIN);
 BlynkTimer timer;
 
 FLAGS
+SENS_ENABLE
 
-// Названия флагов. Эти строки будут выведены на экран телефона
-char table_flags[FLAGS_NUM_MAX][20]; // список имён датчиков
+// Хранит названия кнопок для вывода на экран телефона
+char table_strings[FLAGS_NUM_MAX+SENS_NUM_MAX][NAME_LEN]; // список имён датчиков
 
-struct sens{
-  char* name;
-  float value;
-} sensors[SENS_NUM_MAX];
+float values[SENS_NUM_MAX];
 
-char in_buffer[IN_BUF_SIZE]; // сюда складываются байты из шины I2C
-uint8_t in_index = 0;
+char in_buffer[IN_BUF_SIZE];  // сюда складываются байты из шины I2C
+uint8_t in_index   = 0;
 uint8_t sens_index = 0;
-uint8_t flags_num = 0; // Число флагов
-uint8_t sens_num = 0; // Число датчиков
+uint8_t flags_num  = 0;       // Число флагов
+uint8_t sens_num   = 0;       // Число датчиков
 
 #define BUF_DEL_BYTES(pos,num) {in_index-=num;for(uint8_t i=pos,j=pos+num;i<in_index;i++,j++){in_buffer[i]=in_buffer[j];} \
                                 memset(in_buffer+in_index,0,IN_BUF_SIZE-in_index);}
@@ -148,11 +147,11 @@ bool parser()
         DEBUG_PRINT(F("sens_val:"));
         DEBUG_PRINTLN(sens_value.value);
       
-        if(sensors[sens_value.index].value != sens_value.value)
+        if(values[sens_value.index] != sens_value.value)
         {
-          sensors[sens_value.index].value = sens_value.value;
+          values[sens_value.index] = sens_value.value;
           //Blynk.virtualWrite(values[sens_value.index].v_pin, values[sens_value.index]);
-          table.updateRow(sens_value.index+flags_num, sensors[sens_value.index].name, sensors[sens_value.index].value);
+          table.updateRow(sens_value.index+flags_num, table_strings[sens_value.index+flags_num], values[sens_value.index]);
         }              
       }  
 #if DEBUG_MODE
@@ -169,77 +168,41 @@ bool parser()
   return true; 
 }
 
-uint8_t flags_read_names(char* cmd, uint8_t shift)
+uint8_t read_names(char* cmd, uint8_t shift, bool selected)
 {
   char* p;
   uint8_t i;
-  uint8_t index = 0;
+  uint8_t index = shift;
   
-  char* pos=READ_COM_FIND(cmd);
+  p=READ_COM_FIND(cmd);
 
-  if(pos!=NULL)
+  if(p!=NULL)
   {
-    p=pos+strlen(cmd);
+    p+=strlen(cmd);
           
     while(*p==' ')
     {
-      i = 0;
-      p++;
-      while(isprint(*p) && *p!=' ' && i<19) table_flags[index][i++] = *p++;
-      table_flags[index][i++] = 0;
-         
-      table.addRow(shift+index, table_flags[index], 0);
-      ROW_SELECT(shift+index, 0);
+      i = 0; p++;
+      
+      while(*p && *p!=' ' && i<19) table_strings[index][i++] = *p++;
+      table_strings[index][i] = 0x00;
+           
+      table.addRow(index, table_strings[index], 0);
+      ROW_SELECT(index, selected);
       index++;  
     }
     flags = 0xFF;
   }
 
-  return index;
+  return index-shift;
 }
 
-uint8_t sens_read_names(char* cmd, uint8_t shift)
-{
-  char* p;
-  uint8_t i;
-  uint8_t index = 0;
-  char buf[32];
-
-  char* pos=READ_COM_FIND(cmd);
-
-  if(pos!=NULL)
-  {
-    p=pos+strlen(cmd);
-              
-    while(*p==' ')
-    {
-      i = 0;
-      p++;
-      while(isprint(*p) && *p!=' ' && i<31) buf[i++] = *p++;
-      buf[i++] = 0;
-                
-      if ( (sensors[index].name = (char*)malloc(strlen(buf) + 1) )== NULL )
-      {
-        terminal.print("error: malloc");
-        terminal.flush();
-        exit(1);
-      }
-
-      strcpy(sensors[index].name, buf);
-      table.addRow(shift+index, buf, 0);
-      ROW_SELECT(shift+index, 0);
-      index++;      
-    }
-  }
-
-  return index;
-}
-
-void i2c_read()
+uint8_t i2c_read()
 {
   char inChar;
-  bool start_flag = false; // найден пакет данных
+  bool start_flag = false;  // найден пакет данных
   uint8_t count = 0;
+  uint8_t received = 0;     // запоминаем кол-во байт в приёмном буффере
 
   while (Wire.available()) {
     // получаем новый байт:
@@ -266,25 +229,29 @@ void i2c_read()
     
     if(start_flag)
     {
-      if(in_index < IN_BUF_SIZE) in_buffer[in_index++] = inChar;
+      if(in_index == IN_BUF_SIZE-1) inChar = '\n';
+
+      in_buffer[in_index++] = inChar;
+      received++;
 
       if(inChar=='\n')
       {
+        DEBUG_PRINTLN(in_buffer);
         if(!flags_num)
         {
-          flags_num=flags_read_names(I2C_FLAG, 0);
+          flags_num=read_names(I2C_FLAG, 0, 0);
         } 
         else
         if(!sens_num)
         {
-          sens_num=sens_read_names(I2C_NAME, flags_num);
+          sens_num=read_names(I2C_NAME, flags_num, 1);
         }
 
-        if(in_index==0) return;
+        if(in_index==0) return received;
 
         parser();
           
-        if(in_index==0) return;
+        if(in_index==0) return received;
 
         terminal.write(in_buffer);
         terminal.flush();
@@ -294,7 +261,7 @@ void i2c_read()
     }
     else if(count==2)
     {
-      start_flag = true;
+      count++;
       // читаем flags
       if(flags != inChar)
       {
@@ -302,27 +269,44 @@ void i2c_read()
       
         Blynk.virtualWrite(ALARM_PIN, GET_FLAG(ALARM));
 
-        if(GET_FLAG(GUARD_ENABLE)==0) SENS_DELETE
-
         for(uint8_t k = 0; k < flags_num; k++)
         {
-          table.updateRow(k, table_flags[k], GET_FLAG(k));
+          table.updateRow(k, table_strings[k], GET_FLAG(k));
           ROW_SELECT(k, GET_FLAG(k));
         }
       }
-    }        
+    }
+    else if(count==3)
+    {
+      count--;
+      start_flag = true;
+      // читаем flags
+      if(enable != inChar)
+      {
+        enable = inChar;
+      
+        for(uint8_t k = 0; k < sens_num; k++)
+        {
+          ROW_SELECT(k+flags_num, bitRead(enable,k));
+        }
+      }
+    }            
   }
 
   DEBUG_PRINTLN();
+
+  return received;
 }
 
 void myTimerEvent()
 {
+  uint8_t res = 0;
   // Запрашиваем данные в Ардуино
-  if(Wire.requestFrom(ARDUINO_I2C_ADDR, 32))
+  do
   {
-    i2c_read();    
-  }
+    if(Wire.requestFrom(ARDUINO_I2C_ADDR, 32)) res = i2c_read();    
+  } while(res);
+  
 
   GET_SENS_VALUE(sens_index)
   
@@ -332,10 +316,9 @@ void myTimerEvent()
     return;
   }
   
-  if(flags_num<3)
+  if(flags_num<2)
   {
     FLAGS_DELETE
-    SENS_DELETE
     table.clear();
   }
 }
@@ -421,6 +404,7 @@ uint8_t read_com()
 void setup()
 {
   flags = 0;
+  enable = 0;
 	
   Wire.begin(D1, D2);
 
@@ -474,18 +458,19 @@ void setup()
 
  	table.onSelectChange([](int index, bool selected)
  	{
+    uint8_t tmp;
     if(index < flags_num)
    	{
-   		uint8_t tmp = flags;
-
-   		selected ? SET_FLAG_ONE(index) : SET_FLAG_ZERO(index);
-      I2C_SEND_COMMAND(flags,I2C_FLAGS);   		
-   		flags = tmp;
+   		tmp = flags;
+   		selected ? bitSet(tmp,index) : bitClear(tmp,index);
+      I2C_SEND_COMMAND(tmp,I2C_FLAGS);   		
  	  }
     else
     {
       index-=flags_num;
-      GET_SENS_VALUE(index)
+      tmp = enable;
+      selected ? bitSet(tmp,index) : bitClear(tmp,index);
+      I2C_SEND_COMMAND(tmp,I2C_SENS_ENABLE);
     }
   });
 

@@ -21,9 +21,10 @@ class MY_SENS
     uint8_t SensOpros();
 
     void TimeReset();
+    void SetEnable(uint8_t value);
+    uint8_t GetEnable();
 
   private:
-
 	Sensor* sensors;  
 };
 

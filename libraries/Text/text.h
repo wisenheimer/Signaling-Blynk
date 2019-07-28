@@ -7,20 +7,20 @@
 class TEXT
 {
   public:
-    TEXT(unsigned int size);
+    TEXT(unsigned int);
     ~TEXT();
 
     uint16_t filling();
     uint16_t free_space();
-    uint16_t AddText(char* str);
-    uint16_t AddText_P(const char* str);
-    bool AddChar(char ch);
-    void AddInt(unsigned int i);
-    void AddFloat(float value);
+    uint16_t AddText(char*);
+    uint16_t AddText_P(const char*);
+    bool AddChar(char);
+    void AddInt(unsigned int);
+    void AddFloat(float);
     void Clear();
     char* GetText();
     char GetChar();
-    uint16_t GetBytes(char* buf, unsigned int len);
+    uint16_t GetBytes(char*, unsigned int, bool);
     
   private:
     fifo_t fifo;

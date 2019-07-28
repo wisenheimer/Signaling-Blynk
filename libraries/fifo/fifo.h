@@ -53,7 +53,7 @@ unsigned int fifo_write(fifo_t fifo, void *buffer, unsigned int buffer_size);
  * data). Call fifo_read_commit() to commit fifo_read() operations.
  * Return: amount of byte which are taken from FIFO (0 if FIFO empty).
  */
-unsigned int fifo_read(fifo_t fifo, void *buffer, unsigned int buffer_size);
+unsigned int fifo_read(fifo_t fifo, void *buffer, unsigned int buffer_size, bool flag_copy);
 
 #endif /* __FIFO__INDCLUDED__ */
 

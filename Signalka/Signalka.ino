@@ -6,7 +6,7 @@
  * @Author: wisenheimer
  * @Date:   2019-03-29 12:30:00
  * @Last Modified by: wisenheimer  
- * @Last Modified time: 2019-05-28 10:00:00
+ * @Last Modified time: 2019-07-28 20:00:00
  */
 
 #include "modem.h"
@@ -39,23 +39,23 @@ MY_SENS *sensors = NULL;
 // Сюда надо вписать свои датчики. Описание смотрите в 
 // https://github.com/wisenheimer/Signaling-Blynk/blob/master/README.md
 Sensor sens[SENS_NUM]={
-  Sensor(DOOR_PIN,  DIGITAL_SENSOR,"DOOR", HIGH,0),
-  Sensor(DOOR_PIN,  DS18B20,       "18B20",LOW, 10, 45),
-  Sensor(RADAR_PIN, DIGITAL_SENSOR,"RADAR",LOW),
+  Sensor(DOOR_PIN,  DIGITAL_SENSOR, "Дверь",       HIGH,0),
+  Sensor(DOOR_PIN,  DS18B20,        "Температура", LOW, 10, 45),
+  Sensor(RADAR_PIN, DIGITAL_SENSOR, "Движение",    LOW),
+
 #if RF_ENABLE // Датчик с радиомодулем nRF24L01
-  Sensor(          RF24_SENSOR,   "nRF_0",RF0_CODE),
-  Sensor(          RF24_SENSOR,   "nRF_1",RF1_CODE)
+  Sensor(RF24_SENSOR, "Окно зал",     RF0_CODE),
+  Sensor(RF24_SENSOR, "Окно спальня", RF1_CODE)
 #endif
 };
 
 #define ALARM_MAX_TIME 60 // продолжительность тревоги в секундах, после чего счётчики срабатываний обнуляются
 // активируем флаг тревоги для сбора информации и отправки e-mail
-#define ALARM_ON  if(!GET_FLAG(ALARM)){SET_FLAG_ONE(ALARM);AlarmTime=ALARM_MAX_TIME;RING_TO_ADMIN(phone->admin.index,phone->admin.phone[0]) \
-                  phone->email_buffer->AddText_P(PSTR(" ALARM!"));sensors->GetInfo(phone->email_buffer); \
+#define ALARM_ON  if(GET_FLAG(GUARD_ENABLE) && !GET_FLAG(ALARM)){SET_FLAG_ONE(ALARM);AlarmTime=ALARM_MAX_TIME;RING_TO_ADMIN(phone->admin.index,phone->admin.phone[0]) \
+                  phone->email_buffer->AddText_P(PSTR(ALARM_ON_STR));sensors->GetInfo(phone->email_buffer); \
                   DEBUG_PRINTLN(phone->email_buffer->GetText());}
 // по окончании времени ALARM_MAX_TIME обнуляем флаг тревоги и отправляем e-mail с показаниями датчиков
-#define ALARM_OFF {SET_FLAG_ZERO(ALARM);if(GET_FLAG(GUARD_ENABLE)){phone->email_buffer->AddText_P(PSTR(" ALL:")); \
-                  sensors->GetInfo(phone->email_buffer);sensors->Clear();}}
+#define ALARM_OFF {SET_FLAG_ZERO(ALARM);if(GET_FLAG(GUARD_ENABLE)){phone->email_buffer->AddText_P(PSTR(ALARM_OFF_STR));sensors->GetInfo(phone->email_buffer);sensors->Clear();}}
 
 void power()
 {
@@ -118,12 +118,9 @@ void timer(uint16_t time)
     DEBUG_PRINT('.');
     msec = millis();
 
-    if(GET_FLAG(GUARD_ENABLE))
+    if(sensors->SensOpros())
     { /// Опрос датчиков ///
-      if(sensors->SensOpros())
-      {
-        ALARM_ON // режим тревога вкл.                            
-      }       
+      ALARM_ON // режим тревога вкл.                            
     }
     if(GET_FLAG(ALARM))
     {

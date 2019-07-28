@@ -199,8 +199,13 @@ void Sensor::get_info(TEXT *str)
       str->AddChar('C');
       break;
     default:
+      char val = get_pin_state() + '0';
       // добавляем число срабатываний датчика
       str->AddInt(count);
+      str->AddChar('(');
+      // добавляем текущее состояние пина (0 или 1)
+      str->AddChar(val);
+      str->AddChar(')');
   }
   str->AddChar(' ');
 }

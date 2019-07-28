@@ -49,9 +49,9 @@ char TEXT::GetChar()
   return ch;
 }
 
-uint16_t TEXT::GetBytes(char* buf, unsigned int len)
+uint16_t TEXT::GetBytes(char* buf, unsigned int len, bool flag_copy)
 {
-  return fifo_read(fifo, buf, len);
+  return fifo_read(fifo, buf, len, flag_copy);
 }
 
 void TEXT::AddInt(unsigned int i)

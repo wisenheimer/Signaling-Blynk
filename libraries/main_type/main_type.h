@@ -43,6 +43,30 @@
 #	define DEBUG_PRINTLN(...)
 #endif
 
+#if PDU_ENABLE
+# define ALARM_ON_STR  " Тревога!"
+# define ALARM_OFF_STR " Конец тревоги:"
+# define VKL  " вкл."
+# define VIKL " выкл."
+# define SVET  " Свет"
+# define ALARM_NAME "Тревога"
+# define GUARD_NAME "Охрана"
+# define EMAIL_NAME "Почта(GPRS)"
+# define SMS_NAME   "СМС"
+# define RING_NAME  "Звонок"
+#else
+# define ALARM_ON_STR  " ALARM!"
+# define ALARM_OFF_STR " ALARM END:"
+# define VKL  " ON."
+# define VIKL " OFF."
+# define SVET " Light"
+# define ALARM_NAME "ALARM"
+# define GUARD_NAME "GUARD"
+# define EMAIL_NAME "EMAIL(GPRS)"
+# define SMS_NAME   "SMS"
+# define RING_NAME  "RING"
+#endif
+
 //-------------------------------------------------------
 // Зарезервированные номера пинов (не изменять!!!)
 #define	RING_PIN  2 // отслеживает вызовы с модема
@@ -58,20 +82,25 @@
 #define	SCK_PIN   13
 // Для ИК-приёмника
 #define RECV_PIN  11
+// Зуммер (пищалка)
+#define BEEP_PIN  A2
 //-------------------------------------------------------
 
 #define FLAGS uint8_t flags=0;
+// флаг включения/отключения датчиков
+#define SENS_ENABLE uint8_t enable=0xFF;
 
 enum common_flag {
   ALARM,        	// флаг тревоги при срабатывании датчиков
   GUARD_ENABLE, 	// вкл/откл защиту
   EMAIL_ENABLE,		// отправка отчётов по e-mail
-  CONNECT_ALWAYS,	// не разрывать соединение после отправки e-mail
   SMS_ENABLE,   	// отправка отчётов по sms
   RING_ENABLE,  	// включает/выключает звонки  
   INTERRUPT,    	// прерывание
   MODEM_NEED_INIT
 };
+
+#define CONNECT_ALWAYS 1 // не разрывать соединение после отправки e-mail
 
 #define INV_FLAG(buf,flag)  (buf^=(flag)) // инвертировать бит
 
@@ -80,11 +109,8 @@ enum common_flag {
 #define SET_FLAG_ZERO(flag) bitClear(flags,flag)
 #define INVERT_FLAG(flag)   INV_FLAG(flags,1<<flag)
 
-#define ALARM_BEGIN " ALARM!"
-#define ALARM_END	" ALL:"
-
 #define ARDUINO_I2C_ADDR 1
-#define I2C_NAME		    "NAME:"
+#define I2C_NAME		    "SENS:"
 #define I2C_FLAG        "FLAG:"
 #define I2C_DATA        0x9090
 #define I2C_SENS_VALUE 	0x01
@@ -92,6 +118,7 @@ enum common_flag {
 #define I2C_SENS_INFO 	0x03
 #define I2C_FLAG_NAMES  0x04
 #define I2C_DTMF        0x05
+#define I2C_SENS_ENABLE 0x06
 
 #define START_BYTE		  0x91
 #define END_BYTE		    0x92

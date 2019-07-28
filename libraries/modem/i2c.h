@@ -6,7 +6,7 @@ bool sim800_enable = false;
 
 #define I2C_OFF   digitalWrite(A3,LOW);esp8266_enable=false;
 #define I2C_ON    digitalWrite(A3,HIGH);
-#define I2C_RESET {I2C_OFF;delay(1000);I2C_ON}
+#define I2C_RESET {I2C_OFF;delay(2000);I2C_ON}
 
 #include <Wire.h>
 
@@ -26,6 +26,8 @@ void receiveEvent(int numBytes)
   char buf[BUFFER_LENGTH];
   uint8_t i = 0;
   uint8_t count = 0;
+  uint8_t size;
+  char* p;
   bool sens_flag = false;  
   i2c_cmd *cmd;
 
@@ -51,39 +53,48 @@ void receiveEvent(int numBytes)
         switch (cmd->cmd)
         {
           case I2C_SENS_VALUE:
-            if(GET_FLAG(GUARD_ENABLE))
+            i2c_sens_value sens_value;
+            sens_value.type = cmd->type;
+            sens_value.index = cmd->index;
+            sens_value.value = sensors->GetValueByIndex(cmd->index);
+            size = sizeof(i2c_sens_value);
+            p = (char*)&sens_value;
+            for(i = 0; i < size; i++)
             {
-              i2c_sens_value sens_value;
-              sens_value.type = cmd->type;
-              sens_value.index = cmd->index;
-              sens_value.value = sensors->GetValueByIndex(cmd->index);
-              uint8_t size = sizeof(i2c_sens_value);
-              char* p = (char*)&sens_value;
-              for(i = 0; i < size; i++)
-              {
-                i2c_tx_buf->AddChar(*(p+i));
-              }
+              i2c_tx_buf->AddChar(*(p+i));
             }
           break; 
           case I2C_SENS_INFO:
             if(GET_FLAG(GUARD_ENABLE))
             {
-              *dtmf0 = SENS_GET_NAMES;
+              i2c_tx_buf->AddText_P(PSTR(I2C_NAME));            
+              for(uint8_t k = 0; k < sensors->size; k++)
+              {
+                i2c_tx_buf->AddChar(' ');
+                i2c_tx_buf->AddText(sensors->GetNameByIndex(k));              
+              }
+              i2c_tx_buf->AddChar('\n');
             } 
           break;
           case I2C_FLAG_NAMES:
-            i2c_tx_buf->AddText_P(PSTR(I2C_FLAG));            
-            i2c_tx_buf->AddText_P(PSTR(" ALARM GUARD EMAIL"));              
+            i2c_tx_buf->AddText_P(PSTR(I2C_FLAG));
+            i2c_tx_buf->AddChar(' ');           
+            i2c_tx_buf->AddText_P(PSTR(ALARM_NAME));
+            i2c_tx_buf->AddChar(' ');
+            i2c_tx_buf->AddText_P(PSTR(GUARD_NAME));            
           
             if (sim800_enable)
             {
-              i2c_tx_buf->AddText_P(PSTR(" GPRS SMS RING"));
+              i2c_tx_buf->AddChar(' ');
+              i2c_tx_buf->AddText_P(PSTR(EMAIL_NAME));
+              i2c_tx_buf->AddChar(' ');
+              i2c_tx_buf->AddText_P(PSTR(SMS_NAME));
+              i2c_tx_buf->AddChar(' ');
+              i2c_tx_buf->AddText_P(PSTR(RING_NAME));
             }
-
-            i2c_tx_buf->AddChar('\n');           
+            i2c_tx_buf->AddChar('\n');                    
           break;
           case I2C_FLAGS:
-            i+=sizeof(i2c_cmd);
             if(GET_FLAG(GUARD_ENABLE))
             {
               if(bitRead(cmd->index,GUARD_ENABLE)==0)
@@ -100,12 +111,16 @@ void receiveEvent(int numBytes)
             }
             flags = cmd->index;
           break;
+          case I2C_SENS_ENABLE:
+            sensors->SetEnable(cmd->index);
+          break;
           case I2C_DTMF:
-            *dtmf0 = cmd->index;             
+            *dtmf0 = cmd->index;           
         }
         continue;
       }
     }
+
     i2c_rx_buf->AddChar(buf[i++]);
   }
 }
@@ -125,8 +140,9 @@ void requestEvent()
   for(i = 0; i < 2; i++) buf[i] = START_BYTE;
   
   buf[i++] = flags;
+  buf[i++] = sensors->GetEnable();
 
-  i+=i2c_tx_buf->GetBytes(buf+i, 27);
+  i+=i2c_tx_buf->GetBytes(buf+i, 26, false);
 
   for(k = 0; k < 2; k++) buf[i++] = END_BYTE;
 

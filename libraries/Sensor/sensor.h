@@ -40,11 +40,8 @@ enum {
     // беспроводной датчик RF24L01
     RF24_SENSOR,
 #endif
-
-#if DS18_ENABLE
     // датчик температуры DS18B20
     DS18B20, 
-#endif
     // датчик температуры - термистор
     TERMISTOR
 };

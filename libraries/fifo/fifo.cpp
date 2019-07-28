@@ -92,7 +92,7 @@ unsigned int fifo_write(fifo_t fifo, void *buffer, unsigned int buffer_size)
 /*
  * Read data from FIFO.
  */
-unsigned int fifo_read(fifo_t fifo, void *buffer, unsigned int buffer_size)
+unsigned int fifo_read(fifo_t fifo, void *buffer, unsigned int buffer_size, bool flag_copy)
 {
   unsigned int cnt, cnt_rest;
   unsigned int fifo_real_head;
@@ -116,8 +116,11 @@ unsigned int fifo_read(fifo_t fifo, void *buffer, unsigned int buffer_size)
     {
       memcpy(((char*)buffer) + cnt, fifo->buffer, cnt_rest);
     }
-    fifo->head = (fifo->head + buffer_size) % fifo->size;
-    fifo->filling -= buffer_size;
+    if(!flag_copy)
+    {
+      fifo->head = (fifo->head + buffer_size) % fifo->size;
+      fifo->filling -= buffer_size;
+    }
   } 
 
   return buffer_size;

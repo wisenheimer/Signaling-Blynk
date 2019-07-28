@@ -1,6 +1,8 @@
 
 #include "my_sensors.h"
 
+SENS_ENABLE
+
 MY_SENS::MY_SENS(Sensor* sens, uint8_t num)
 {
   sensors = sens;
@@ -61,6 +63,16 @@ void MY_SENS::TimeReset()
   }
 }
 
+void MY_SENS::SetEnable(uint8_t value)
+{
+  enable = value;
+}
+
+uint8_t MY_SENS::GetEnable()
+{
+  return enable;
+}
+
 uint8_t MY_SENS::SensOpros()
 {
   uint8_t count = 0;
@@ -79,7 +91,10 @@ uint8_t MY_SENS::SensOpros()
 
     if(!sensors[i].start_time)
     {
-      count += sensors[i].get_count();
+      if(sensors[i].get_count())
+      {
+        if(bitRead(enable,i)) count++;
+      }       
     }
   }
 
