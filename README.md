@@ -291,11 +291,11 @@ https://play.google.com/store/apps/details?id=cc.blynk
   
 Геркон. Для него зарезервирован 4 пин ардуины DOOR_PIN
   
-**Sensor(DOOR_PIN, DIGITAL_SENSOR,"DOOR", HIGH,0)**
+**Sensor(DOOR_PIN, DIGITAL_SENSOR,"Дверь", HIGH,0)**
 	
 Датчик температуры DS18B20. Распаян на плате на пине DOOR_PIN
 	
-**Sensor(DOOR_PIN, DS18B20, "18B20", LOW, 10, 45)**
+**Sensor(DOOR_PIN, DS18B20, "Температура", LOW, 10, 45)**
 	
 Датчик температуры и влажности DHT11, DHT21 или DHT22.
 
@@ -309,21 +309,21 @@ https://play.google.com/store/apps/details?id=cc.blynk
 
 Датчик температуры термистор. Заведён на плате на пин А7
 
-**Sensor(A7, TERMISTOR, "TERM", LOW, 10, 45)**
+**Sensor(A7, TERMISTOR, "Термистор", LOW, 10, 45)**
 
 Датчик газа MQ-2. Порог срабатывания задан равным 120.
 
-**Sensor(A0, ANALOG_SENSOR, "GAS", LOW, 120)**
+**Sensor(A0, ANALOG_SENSOR, "Газ", LOW, 120)**
 
 ### Все датчики, где на выходе либо низкий, либо высокий логический уровень
 	
 Датчик движения RCWL-0516
 	
-**Sensor(PIN, DIGITAL_SENSOR,"RADAR",LOW)**
+**Sensor(PIN, DIGITAL_SENSOR,"Движение",LOW)**
 	
 Датчик огня с проверкой на ложное срабатывание 10 сек.
 	
-**Sensor(PIN, CHECK_DIGITAL_SENSOR, "FIRE", HIGH)**	
+**Sensor(PIN, CHECK_DIGITAL_SENSOR, "Огонь", HIGH)**	
 
 ### Беспроводные датчики:
 	
