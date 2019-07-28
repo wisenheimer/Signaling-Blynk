@@ -56,9 +56,9 @@
 //////////////////////////////////////////////////////////
 // Отправка почты
 #define SMTP_SERVER					F("\"smtp-devices.yandex.com\",25") // почтовый сервер яндекс и порт
-#define SMTP_USER_NAME_AND_PASSWORD	F("\"shmarinivan\",\"h5lVQfYE0un787OP0EGtQXVWNvWB83CI\"") // Логин и пароль от почты
-#define SENDER_ADDRESS_AND_NAME		F("\"shmarinivan@yandex.ru\",\"SIM800L\"")
-#define RCPT_ADDRESS_AND_NAME		F("\"mihalex101@gmail.com\",\"Alex\"") // Адрес и имя получателя
+#define SMTP_USER_NAME_AND_PASSWORD	F("\"login\",\"password\"") // Логин и пароль от почты
+#define SENDER_ADDRESS_AND_NAME		F("\"login@yandex.com\",\"SIM800L\"")
+#define RCPT_ADDRESS_AND_NAME		F("\"login@mail.ru\",\"Alex\"") // Адрес и имя получателя
 //#	define RCPT_CC_ADDRESS_AND_NAME		F("\"login@yandex.ru\",\"Ivan\"") // Адрес и имя получателя (копия)
 //#	define RCPT_BB_ADDRESS_AND_NAME		F("\"login2@yandex.ru\",\"Ivan\"") // Адрес и имя получателя (вторая копия)
 
