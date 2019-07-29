@@ -85,7 +85,7 @@
 // Задаём максимальное количество флагов
 #define FLAGS_NUM_MAX 5
 // Максимальная длина имени флага или датчика, знаков
-#define NAME_LEN 20
+#define NAME_LEN 40
 
 struct{
   char ssid[32];
@@ -184,7 +184,7 @@ uint8_t read_names(char* cmd, uint8_t shift, bool selected)
     {
       i = 0; p++;
       
-      while(*p && *p!=' ' && i<19) table_strings[index][i++] = *p++;
+      while(*p && *p!=' ' && i<NAME_LEN-1) table_strings[index][i++] = *p++;
       table_strings[index][i] = 0x00;
            
       table.addRow(index, table_strings[index], 0);
