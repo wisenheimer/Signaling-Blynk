@@ -115,6 +115,8 @@ uint8_t sens_index = 0;
 uint8_t flags_num  = 0;       // Число флагов
 uint8_t sens_num   = 0;       // Число датчиков
 
+uint8_t enable_prev = enable;
+
 #define BUF_DEL_BYTES(pos,num) {in_index-=num;for(uint8_t i=pos,j=pos+num;i<in_index;i++,j++){in_buffer[i]=in_buffer[j];} \
                                 memset(in_buffer+in_index,0,IN_BUF_SIZE-in_index);}
 bool parser()
@@ -184,7 +186,7 @@ uint8_t read_names(char* cmd, uint8_t shift, bool selected)
     {
       i = 0; p++;
       
-      while(*p && *p!=' ' && i<NAME_LEN-1) table_strings[index][i++] = *p++;
+      while(*p && *p!=' ' && *p!='\n' && i<NAME_LEN-2) table_strings[index][i++] = *p++;
       table_strings[index][i] = 0x00;
            
       table.addRow(index, table_strings[index], 0);
@@ -281,6 +283,19 @@ uint8_t i2c_read()
       count--;
       start_flag = true;
       // читаем flags
+      if(enable_prev != inChar)
+      {
+        for(uint8_t k = 0; k < sens_num; k++)
+        {
+          if(bitRead(enable_prev,k) != bitRead(inChar,k))
+          {
+            terminal.print(F("Sensor ")); terminal.print(table_strings[k+flags_num]);
+            bitRead(inChar,k) ? terminal.println(VKL) : terminal.println(VIKL);
+            terminal.flush();
+          }
+        }
+        enable_prev = inChar;
+      }
       if(enable != inChar)
       {
         enable = inChar;
@@ -459,6 +474,7 @@ void setup()
  	table.onSelectChange([](int index, bool selected)
  	{
     uint8_t tmp;
+
     if(index < flags_num)
    	{
    		tmp = flags;
@@ -470,7 +486,7 @@ void setup()
       index-=flags_num;
       tmp = enable;
       selected ? bitSet(tmp,index) : bitClear(tmp,index);
-      I2C_SEND_COMMAND(tmp,I2C_SENS_ENABLE);
+      I2C_SEND_COMMAND(tmp,I2C_SENS_ENABLE);      
     }
   });
 
