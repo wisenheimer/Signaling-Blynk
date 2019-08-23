@@ -69,40 +69,25 @@ https://github.com/wisenheimer/Signaling-Blynk/blob/master/nRF24sensor/nRF24sens
 * Скетч беспроводного ИК-датчика
 https://github.com/wisenheimer/Signaling-Blynk/blob/master/IRsensor/IRsensor.ino
 
-## Необходимые библиотеки
+## Необходимые библиотеки и настройки среды Arduino IDE
 
-Скачать последнюю Blynk library можно здесь:
+Для начала в Arduino IDE надо установить полее раннюю версию менеджера плат.
 
-https://github.com/blynkkk/blynk-library/releases/latest
+	Инструменты > Плата > Менеджер плат
 
-Дополнительная информация о Blynk здесь:
+	Ждём окончания загрузки.
 
-Downloads, docs, tutorials: http://www.blynk.cc
+	Кликаем на "Arduino AVR Boards".
 
-Sketch generator:           http://examples.blynk.cc
+	Выбираем 1.6.21 из выпадающего меню
 
-Blynk community:            http://community.blynk.cc
+	Кликаем "Установка".
 
-Follow us:                  http://www.fb.com/blynkapp
-                            http://twitter.com/blynk_app
+	Ждём окончания установки.
 
-Прошивка для NodeMcu написана в среде Arduino IDE. Чтобы собрать проект, необходимо установить библиотеку для ESP8266 от сюда https://github.com/esp8266/Arduino#available-versions
-Ставим версию 2.4.2. С более новыми может не работать.
+Для ангийского меню:
 
-Библиотека 1-Wire
-https://github.com/PaulStoffregen/OneWire
-
-Для датчика температуры DS18B20 https://github.com/milesburton/Arduino-Temperature-Control-Library
-
-Для радиомодуля nRF24L01 https://github.com/nRF24/RF24
-
-Для ИК-датчика и ИК-приёмника https://github.com/z3t0/Arduino-IRremote
-
-Для 7 сигментного индикатора TM1637 https://github.com/Seeed-Studio/Grove_4Digital_Display
-
-Если при компиляции появляются непонятные ошибки, попробуйте сделать следующее:
-
-    Tools > Board > Boards Manager
+Tools > Board > Boards Manager
 
     Wait for downloads to finish.
 
@@ -115,10 +100,52 @@ https://github.com/PaulStoffregen/OneWire
     Wait for installation to finish.
 
     Click "Close".
+    
+Если планируете использовать плату NodeMCU и приложение Blynk, то устанавливаем библиотеку для esp8266. Как это сделать, можете почитать здесь https://smartmodules.ru/esp8266-arduino-ide
+
+Ставим версию 2.4.2. С более новыми Blynk не работает.
+
+Затем скаичваем и устанавливаем последнюю Blynk library от сюда:
+
+https://github.com/blynkkk/blynk-library/releases/latest
+
+или через менеджер библиотек в Arduino IDE, ищем по слову Blynk.
+
+Дополнительная информация о Blynk здесь:
+
+Downloads, docs, tutorials: http://www.blynk.cc
+
+Sketch generator:           http://examples.blynk.cc
+
+Blynk community:            http://community.blynk.cc
+
+Follow us:                  http://www.fb.com/blynkapp
+                            http://twitter.com/blynk_app
+
+Так же нам потребуется библиотека 1-Wire
+https://github.com/PaulStoffregen/OneWire
+
+В менеджере библиотек ищется по слову OneWire. Не путать с OneWireHub!!!
+
+Для датчика температуры DS18B20 устанавливаем https://github.com/milesburton/Arduino-Temperature-Control-Library
+
+В менеджере библиотек ищется по слову DallasTemperature.
+
+Для радиомодуля nRF24L01 https://github.com/nRF24/RF24
+
+В менеджере библиотек называется RF24.
+
+Для ИК-датчика и ИК-приёмника https://github.com/z3t0/Arduino-IRremote
+
+В менеджере библиотек называется IRremote.
+
+Для 7 сигментного индикатора часов TM1637 https://github.com/Seeed-Studio/Grove_4Digital_Display
+
+В менеджере библиотек называется Grove 4-Digit Display.
 
 ## Подключение 7 сигментного индикатора TM1637. Электронные часы
 
-К плате Ардуино можно подключить 7 сигментный индикатор TM1637, на который будет выводиться текущее время.
+К плате Ардуино можно подключить 7 сигментный индикатор TM1637, на который будет выводиться текущее время. Нужен, если мы хотим поставить сигнализацию на видное место и замаскировать под электронные часы. Удобно при использовании беспроводных датчиков.
 
 ![tm1637](https://user-images.githubusercontent.com/45194485/58461005-663d7980-8137-11e9-8519-d92f2782573f.jpg)
 
