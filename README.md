@@ -122,7 +122,7 @@ Tools > Board > Boards Manager
 
 Ставим версию 2.4.2. С более новыми Blynk не работает.
 
-Затем скаичваем и устанавливаем последнюю Blynk library от сюда:
+Затем скачиваем и устанавливаем последнюю Blynk library от сюда:
 
 https://github.com/blynkkk/blynk-library/releases/latest
 
