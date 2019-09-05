@@ -23,6 +23,28 @@
 #define GSM_SMS_CLASS_3  3   //  Класс отправляемых SMS сообщений.           (паремр функции SMSsendClass() указывающий что отправляются SMS класса 3)
 #define GSM_SMS_CLASS_NO 4   //  Класс отправляемых SMS сообщений.           (паремр функции SMSsendClass() указывающий что отправляются SMS без класса)
 
+// DTMF команды.
+enum {
+  GUARD_ON = 1,     // 1# - постановка на охрану
+  GUARD_OFF,        // 2# - снятие с охраны 
+  EMAIL_ON_OFF,     // 3# - включить/отключить GPRS/EMAIL
+  SMS_ON_OFF,       // 4# - включить/отключить SMS
+  TEL_ON_OFF,       // 5# - включить/отключить звонок при тревоге
+  GET_INFO,         // 6# - сбор и отправка всех данных датчиков
+  EMAIL_ADMIN_PHONE,// 7# - отправляем на почту номер админа
+  EMAIL_PHONE_BOOK, // 8# - отправка на почту телефонной книги
+  ADMIN_NUMBER_DEL, // 9# - админ больше не админ
+  SM_CLEAR,         // 10# - удалить все номера с симкарты
+  MODEM_RESET,      // 11# - перезагрузка модема
+  ESP_RESET,        // 12# - перезагрузка модема
+  BAT_CHARGE,       // 13# - показывает заряд батареи в виде строки
+                    // +CBC: 0,100,4200
+                    // где 100 - процент заряда
+                    // 4200 - напряжение на батарее в мВ.
+  SYNC_TIME,        // 14# - синхронизация времени модема и часов
+  SIREN_ON_OFF      // 15# - включить/отключить использование сирены
+};
+
 
 typedef struct cell
 {
@@ -46,6 +68,7 @@ class MODEM
     MODEM::MODEM();
     ~MODEM();
     TEXT        *email_buffer;
+    uint16_t    DTMF[2];
     void        init    ();
     void        wiring  ();
     void        email   ();
@@ -57,12 +80,10 @@ class MODEM
     uint8_t     gsm_operator;
     uint8_t     cell_num;
     TEXT        *text;    
-    uint8_t     answer_flags;
     uint8_t     flag_sensor_enable;
     uint8_t     reset_count;
     uint8_t     gprs_init_count;
     uint32_t    timeRegularOpros;
-    uint16_t    DTMF[2];  
     uint8_t     dtmf_index; 
     uint8_t     dtmf_str_index; 
     char        dtmf[DTMF_BUF_SIZE]; // DTMF команда
@@ -85,6 +106,7 @@ class MODEM
     char*       get_number_and_type (char* p);
     char*       get_name            (char* p);
     bool        read_com            (const char* answer);
+    void        flag_status         (int flag, const char* name);
 
     uint8_t     _num                (char);                                                             //  Преобразование символа в число(аргумент функции: символ 0-9,a-f,A-F)
     char        _char               (uint8_t);                                                          //  Преобразование числа в символ (аргумент функции: число 0-15)

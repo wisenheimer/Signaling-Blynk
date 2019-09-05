@@ -35,6 +35,8 @@ enum {
 #if IR_ENABLE
     // беспроводной датчик с ик диодом
     IR_SENSOR,
+    // управление с ик пульта
+    IR_PULT,
 #endif
 #if RF_ENABLE
     // беспроводной датчик RF24L01
@@ -54,14 +56,15 @@ class Sensor
     // поскольку её значение может изменяться внутри обработчика прерывания
     volatile uint8_t start_time;
     volatile uint8_t end_time;
-    uint8_t count; // количество срабатываний
-    uint8_t type;  // тип датчика
-    uint8_t pin;   // пин
-    float value;   // последнее показание датчика
-    char *name;
+    uint8_t count;  // количество срабатываний
+    uint8_t type;   // тип датчика
+    uint8_t pin;    // пин
+    float value;    // последнее показание датчика
+    char *name;     // отображаемое имя
+    bool enable;    // фдаг доступности (вкл/откл)
           
-    Sensor(uint8_t _type, char* sens_name, uint32_t ir_code);
-    Sensor(uint8_t _pin, uint8_t _type, char* sens_name, uint8_t pinLevel = LOW, uint8_t start_time_sec = 10, uint32_t alarm_val = 200);
+    Sensor(uint8_t _type, char* sens_name, uint32_t code, void (*func()) = NULL);
+    Sensor(uint8_t _pin, uint8_t _type, char* sens_name, uint8_t pinLevel = LOW, uint8_t start_time_sec = 10, uint32_t alarm_val = 200, void (*func()) = NULL);
     ~Sensor();
     
     bool get_pin_state();     // возвращает state = digitalRead(pin). Если состояние изменилось, увеличивет счётчик срабатываний на 1.
@@ -77,6 +80,8 @@ class Sensor
 #if DHT_ENABLE
     DHT* dht; // датчик температуры и влажности   
 #endif
+
+    void (*callback)();
 };
 
 #endif

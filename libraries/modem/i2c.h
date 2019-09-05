@@ -30,8 +30,9 @@ void receiveEvent(int numBytes)
   char* p;
   bool sens_flag = false;  
   i2c_cmd *cmd;
+  uint16_t val;
 
-  while (0 <Wire.available() && i < BUFFER_LENGTH) {
+  while (0 < Wire.available() && i < BUFFER_LENGTH) {
     buf[i] = (uint8_t)Wire.read();
     //DEBUG_PRINT(' ');DEBUG_PRINT(buf[i]);DEBUG_PRINT('|');DEBUG_PRINT(buf[i],HEX);
     i++;
@@ -57,12 +58,13 @@ void receiveEvent(int numBytes)
             sens_value.type = cmd->type;
             sens_value.index = cmd->index;
             sens_value.value = sensors->GetValueByIndex(cmd->index);
+            sens_value.enable = sensors->GetEnable(cmd->index);
             size = sizeof(i2c_sens_value);
             p = (char*)&sens_value;
             for(i = 0; i < size; i++)
             {
               i2c_tx_buf->AddChar(*(p+i));
-            }
+            }      
           break; 
           case I2C_SENS_INFO:
             if(GET_FLAG(GUARD_ENABLE))
@@ -70,7 +72,7 @@ void receiveEvent(int numBytes)
               i2c_tx_buf->AddText_P(PSTR(I2C_NAME));            
               for(uint8_t k = 0; k < sensors->size; k++)
               {
-                i2c_tx_buf->AddChar(' ');
+                i2c_tx_buf->AddChar('%');
                 i2c_tx_buf->AddText(sensors->GetNameByIndex(k));              
               }
               i2c_tx_buf->AddChar('\n');
@@ -78,18 +80,23 @@ void receiveEvent(int numBytes)
           break;
           case I2C_FLAG_NAMES:
             i2c_tx_buf->AddText_P(PSTR(I2C_FLAG));
-            i2c_tx_buf->AddChar(' ');           
+            i2c_tx_buf->AddChar('%');           
             i2c_tx_buf->AddText_P(PSTR(ALARM_NAME));
-            i2c_tx_buf->AddChar(' ');
-            i2c_tx_buf->AddText_P(PSTR(GUARD_NAME));            
-          
+            i2c_tx_buf->AddChar('%');
+            i2c_tx_buf->AddText_P(PSTR(GUARD_NAME));
+#if SIREN_ENABLE
+            i2c_tx_buf->AddChar('%');
+            i2c_tx_buf->AddText_P(PSTR(SIREN_NAME));
+            i2c_tx_buf->AddChar('%');
+            i2c_tx_buf->AddText_P(PSTR(SIREN2_NAME));      
+#endif          
             if (sim800_enable)
             {
-              i2c_tx_buf->AddChar(' ');
+              i2c_tx_buf->AddChar('%');
               i2c_tx_buf->AddText_P(PSTR(EMAIL_NAME));
-              i2c_tx_buf->AddChar(' ');
+              i2c_tx_buf->AddChar('%');
               i2c_tx_buf->AddText_P(PSTR(SMS_NAME));
-              i2c_tx_buf->AddChar(' ');
+              i2c_tx_buf->AddChar('%');
               i2c_tx_buf->AddText_P(PSTR(RING_NAME));
             }
             i2c_tx_buf->AddChar('\n');                    
@@ -112,7 +119,12 @@ void receiveEvent(int numBytes)
             flags = cmd->index;
           break;
           case I2C_SENS_ENABLE:
-            sensors->SetEnable(cmd->index);
+            val = cmd->index;
+            p = (uint8_t*)&val;
+          //  Serial.print(F("val=")); Serial.print(val, HEX);
+          //  Serial.print(F("index=")); Serial.print((int)*(p+1), HEX);
+          //  Serial.print(F(" enable=")); Serial.println((int)*p, HEX);
+            sensors->SetEnable(*(p+1), (bool)*p);
           break;
           case I2C_DTMF:
             *dtmf0 = cmd->index;           
@@ -120,8 +132,7 @@ void receiveEvent(int numBytes)
         continue;
       }
     }
-
-    i2c_rx_buf->AddChar(buf[i++]);
+    i2c_rx_buf->AddChar(buf[i++]);    
   }
 }
 
@@ -140,7 +151,8 @@ void requestEvent()
   for(i = 0; i < 2; i++) buf[i] = START_BYTE;
   
   buf[i++] = flags;
-  buf[i++] = sensors->GetEnable();
+  //memcpy(buf+i, &flags, sizeof(flags));
+  //i+=sizeof(flags);
 
   i+=i2c_tx_buf->GetBytes(buf+i, 26, false);
 

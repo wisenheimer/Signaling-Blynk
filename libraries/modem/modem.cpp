@@ -6,34 +6,13 @@
 #include <avr/sleep.h>
 #include <avr/power.h>
 
-// DTMF команды.
-enum {
-  GUARD_ON = 1,     // 1# - постановка на охрану
-  GUARD_OFF,        // 2# - снятие с охраны 
-  EMAIL_ON_OFF,     // 3# - включить/отключить GPRS/EMAIL
-  SMS_ON_OFF,       // 4# - включить/отключить SMS
-  TEL_ON_OFF,       // 5# - включить/отключить звонок при тревоге
-  GET_INFO,         // 6# - сбор и отправка всех данных датчиков
-  EMAIL_ADMIN_PHONE,// 7# - отправляем на почту номер админа
-  EMAIL_PHONE_BOOK, // 8# - отправка на почту телефонной книги
-  ADMIN_NUMBER_DEL, // 9# - админ больше не админ
-  SM_CLEAR,         // 10# - удалить все номера с симкарты
-  MODEM_RESET,      // 11# - перезагрузка модема
-  ESP_RESET,        // 12# - перезагрузка модема
-  BAT_CHARGE,       // 13# - показывает заряд батареи в виде строки
-                    // +CBC: 0,100,4200
-                    // где 100 - процент заряда
-                    // 4200 - напряжение на батарее в мВ.
-  SYNC_TIME         // 14# - синхронизация времени модема и часов
-};
-
 FLAGS
 bool flag_gprs_connect = false; // показывает, есть ли соединение
-
-# include "i2c.h"
+bool MODEM_NEED_INIT = false;
 
 extern MY_SENS *sensors;
 
+volatile uint8_t answer_flags;
 enum answer {get_pdu, get_ip, ip_ok, gprs_connect, email_end, smtpsend, smtpsend_end, admin_phone};
 
 #define CLEAR_FLAG_ANSWER           answer_flags=0
@@ -41,6 +20,8 @@ enum answer {get_pdu, get_ip, ip_ok, gprs_connect, email_end, smtpsend, smtpsend
 #define SET_FLAG_ANSWER_ONE(flag)   bitSet(answer_flags,flag)
 #define SET_FLAG_ANSWER_ZERO(flag)  bitClear(answer_flags,flag)
 #define INVERT_FLAG_ANSWER(flag)    INV_FLAG(answer_flags,1<<flag)
+
+# include "i2c.h"
 
 #define OK   "OK"
 #define ERR  "ERROR"
@@ -57,6 +38,11 @@ enum answer {get_pdu, get_ip, ip_ok, gprs_connect, email_end, smtpsend, smtpsend
 // время между опросами модема на предмет зависания и не отправленных смс/email
 #define REGULAR_OPROS_TIME  10000
 uint32_t opros_time;
+#if TM1637_ENABLE
+
+uint32_t timeSync = 0;
+
+#endif
 
 #define GPRS_GET_IP       if(!answer_flags && flag_gprs_connect){SERIAL_PRINTLN(F("AT+SAPBR=2,1"));SET_FLAG_ANSWER_ONE(get_ip);gprs_init_count++;}
 #define GPRS_CONNECT(op)  if(!answer_flags && !flag_gprs_connect){SERIAL_PRINT(F("AT+SAPBR=3,1,\"CONTYPE\",\"GPRS\";+SAPBR=3,1,\"APN\",\"internet\";+SAPBR=3,1,\"USER\",\"")); \
@@ -238,7 +224,7 @@ void MODEM::reinit()
 
 void MODEM::reinit_end()
 {
-  if(GET_FLAG(MODEM_NEED_INIT))
+  if(MODEM_NEED_INIT)
   {
     const __FlashStringHelper* cmd[] = {
       F("AT+DDET=1"),         // вкл. DTMF. 
@@ -288,7 +274,7 @@ void MODEM::reinit_end()
 
     BEEP
 
-    SET_FLAG_ZERO(MODEM_NEED_INIT);
+    MODEM_NEED_INIT = false;
   }     
 }
 
@@ -579,11 +565,14 @@ uint8_t MODEM::parser()
 
 #if TM1637_ENABLE
   // получаем время  +CCLK: "04/01/01,03:36:04+12"
-  if ((p=READ_COM_FIND("+CCLK:"))!=NULL)
+  if ((p=READ_COM_FIND("+CCLK"))!=NULL)
   {
     char ch;
     uint8_t time[3];
-    p+=17;
+    p+=5;
+    if(*p==':') p+=12;
+    else if(*p=='=') p+=11;
+    else return 0;
 
     for(uint8_t i = 0; i < 3; i++)
     {
@@ -617,7 +606,10 @@ uint8_t MODEM::parser()
     }
   }
 
-  for(uint8_t i = 0; i < 3; i++)
+  // ALARM RING
+  // +CALV: 2
+
+  for(uint8_t i = 0; i < 2; i++)
   {
     if((p=READ_COM_FIND_P(string[i]))!=NULL)
     {
@@ -683,10 +675,11 @@ uint8_t MODEM::parser()
     // письмо успешно отправлено
     if((p = READ_COM_FIND(": 1"))!=NULL)
     {
-      if(!GET_FLAG(CONNECT_ALWAYS))
-      { // разрываем соединение с интернетом
-        GPRS_DISCONNECT;
-      }
+#if CONNECT_ALWAYS==0
+      // разрываем соединение с интернетом
+      GPRS_DISCONNECT;
+
+#endif
       gprs_init_count = 0;
       email_buffer->Clear();
     }
@@ -782,16 +775,16 @@ uint8_t MODEM::parser()
     return 1;    
   }
   
-  // Получаем смс вида "set pin НОМЕР_ПИНА on/off".
-  // Например, "set pin 14 on" и "set pin 14 off"
+  // Получаем смс вида "pin НОМЕР_ПИНА on/off".
+  // Например, "pin 14 on" и "pin 14 off"
   // задают пину 14 (А0) значения HIGH или LOW соответственно.
   // Поддерживаются пины от 5 до 19, где 14 соответствует А0, 15 соответствует А1 и т.д
   // Внимание. Пины A6 и A7 не поддерживаются, т.к. они не работают как цифровые выходы.
-  if ((p=READ_COM_FIND("set pin"))!=NULL)
+  if ((p=READ_COM_FIND("pin "))!=NULL)
   {
-    if (GET_FLAG_ANSWER(admin_phone))
+    //if (GET_FLAG_ANSWER(admin_phone))
     {
-      p+=8;
+      p+=4;
       uint8_t buf[3];
       uint8_t i = 0;
       uint8_t pin;
@@ -812,12 +805,13 @@ uint8_t MODEM::parser()
       else return;      
   
       pinMode(pin, OUTPUT); // устанавливаем пин как выход
-      digitalWrite(pin, level); // устанавливаем пин в 0, для выключения реле
+      digitalWrite(pin, level);
       // ответное смс
       email_buffer->AddText_P(PSTR("PIN "));
-      email_buffer->AddInt(pin);
+      email_buffer->AddInt((int)pin);
       email_buffer->AddText_P(PSTR(" is "));
-      email_buffer->AddInt(digitalRead(pin));
+      email_buffer->AddChar(digitalRead(pin)+48);
+      email_buffer->AddChar('\n');
       DEBUG_PRINTLN(email_buffer->GetText()); // отладочное собщение
 
       SET_FLAG_ANSWER_ZERO(admin_phone);
@@ -970,7 +964,7 @@ bool MODEM::read_com(const char* answer)
         if(!sim800_enable)
         {
           sim800_enable = true;
-          SET_FLAG_ONE(MODEM_NEED_INIT);
+          MODEM_NEED_INIT = true;
         }
         reset_count = 0;
         timeRegularOpros = millis();
@@ -992,11 +986,21 @@ bool MODEM::read_com(const char* answer)
 }
 
 #define DELETE_PHONE(index)    {SERIAL_PRINT(F("AT+CPBW="));SERIAL_PRINTLN(index);}
-#define FLAG_STATUS(flag,name) email_buffer->AddText_P(PSTR(name));if(GET_FLAG(flag))email_buffer->AddText_P(PSTR(VKL));else email_buffer->AddText_P(PSTR(VIKL));email_buffer->AddChar(' ')
+#define FLAG_STATUS(flag,name) flag_status(flag,PSTR(name))
+
+void MODEM::flag_status(int flag, const char* name)
+{
+  email_buffer->AddText_P(name);
+  email_buffer->AddText_P(GET_FLAG(flag)?PSTR(VKL):PSTR(VIKL));
+}
 
 void MODEM::flags_info()
 {
   FLAG_STATUS(GUARD_ENABLE,  GUARD_NAME);
+#if SIRENA_ENABLE
+  FLAG_STATUS(SIREN_ENABLE,  SIREN_NAME);
+  FLAG_STATUS(SIREN2_ENABLE, SIREN2_NAME);
+#endif
     
   if (sim800_enable)
   {
@@ -1016,6 +1020,15 @@ void MODEM::wiring() // прослушиваем телефон
 
   if (sim800_enable)
   {
+#if TM1637_ENABLE
+    // синхронизация времени часов
+    if(millis() - timeSync > SYNC_TIME_PERIOD)
+    {
+      DTMF[0] = SYNC_TIME;
+      timeSync = millis();
+    }
+#endif
+
     // Опрос модема
     if(millis() - timeRegularOpros > opros_time)
     {
@@ -1035,13 +1048,13 @@ void MODEM::wiring() // прослушиваем телефон
         else DTMF[0]=MODEM_RESET;
       }
 
-      if(!GET_FLAG(MODEM_NEED_INIT) && !admin.phone[0]) DTMF[0]=EMAIL_ADMIN_PHONE;
+      if(MODEM_NEED_INIT==false && !admin.phone[0]) DTMF[0]=EMAIL_ADMIN_PHONE;
 
       reinit_end();
 
       reset_count++;
 
-      if(!GET_FLAG(MODEM_NEED_INIT))
+      if(MODEM_NEED_INIT==false)
       {
         // Есть данные для отправки
         if(email_buffer->filling() && esp8266_enable==false)
@@ -1072,7 +1085,7 @@ void MODEM::wiring() // прослушиваем телефон
           }
           else email_buffer->Clear();            
         }
-        else if(!GET_FLAG(MODEM_NEED_INIT))
+        else if(MODEM_NEED_INIT==false)
         {
           sleep();
           // проверяем непрочитанные смс и уровень сигнала
@@ -1097,6 +1110,7 @@ void MODEM::wiring() // прослушиваем телефон
   {
     SET_FLAG_ZERO(INTERRUPT);
     DTMF[0] = GET_INFO;
+    sensors->TimeReset();
   }
 
   if(DTMF[0])
@@ -1110,27 +1124,35 @@ void MODEM::wiring() // прослушиваем телефон
     switch (DTMF[0])
     {
       case GUARD_ON:
+        // Закрываем дверь в автомобиле
+        CLOSE_DOOR        
+
         SET_FLAG_ONE(GUARD_ENABLE);
         FLAG_STATUS(GUARD_ENABLE, GUARD_NAME);
         email_buffer->AddChar('\n');
         break;                        
       case GUARD_OFF:
+        // Открываем дверь в автомобиле
+        OPEN_DOOR
         SET_FLAG_ZERO(GUARD_ENABLE);
         FLAG_STATUS(GUARD_ENABLE, GUARD_NAME);
         email_buffer->AddChar('\n');
         break;
       case GET_INFO:
         email_buffer->AddText_P(PSTR(SVET));
-        if(digitalRead(POWER_PIN))
-        {
-          if(GET_FLAG(GUARD_ENABLE)) sensors->TimeReset();
-          email_buffer->AddText_P(PSTR(VKL));
-        }           
-        else
-          email_buffer->AddText_P(PSTR(VIKL));
+        email_buffer->AddText_P(digitalRead(POWER_PIN)?PSTR(VKL):PSTR(VIKL));
         flags_info(); 
         if(GET_FLAG(GUARD_ENABLE)) sensors->GetInfoAll(email_buffer);                       
         break;
+#if SIRENA_ENABLE
+      case SIREN_ON_OFF:
+        INVERT_FLAG(SIREN_ENABLE);
+        FLAG_STATUS(SIREN_ENABLE, SIREN_NAME);
+        INVERT_FLAG(SIREN2_ENABLE);
+        FLAG_STATUS(SIREN2_ENABLE, SIREN2_NAME);
+        email_buffer->AddChar('\n');             
+        break;
+#endif
       case EMAIL_ON_OFF:
         INVERT_FLAG(EMAIL_ENABLE);
         FLAG_STATUS(EMAIL_ENABLE, EMAIL_NAME);
@@ -1191,7 +1213,12 @@ void MODEM::wiring() // прослушиваем телефон
         SERIAL_PRINTLN(F("AT+CCLK?"));
         break;
       default:
-        SERIAL_PRINT(F("AT+CUSD=1,\"#"));
+        SERIAL_PRINT(F("AT+CUSD=1,\""));
+#if PDU_ENABLE
+        SERIAL_PRINT('*');
+#else
+        SERIAL_PRINT('#');
+#endif
         SERIAL_PRINT(DTMF[0]); SERIAL_PRINTLN(F("#\""));
     }
     DTMF[0] = 0;

@@ -46,25 +46,31 @@
 #if PDU_ENABLE
 # define ALARM_ON_STR  " Тревога!"
 # define ALARM_OFF_STR " Конец тревоги:"
-# define VKL  " вкл."
-# define VIKL " выкл."
+# define VKL  " вкл. "
+# define VIKL " выкл. "
 # define SVET  " Свет"
-# define ALARM_NAME "Тревога"
-# define GUARD_NAME "Охрана"
-# define EMAIL_NAME "Почта(GPRS)"
-# define SMS_NAME   "СМС"
-# define RING_NAME  "Звонок"
+# define SENSOR "Датчик "
+# define ALARM_NAME   "Тревога"
+# define GUARD_NAME   "Охрана"
+# define SIREN_NAME   "Сирена"
+# define SIREN2_NAME  "Строб"
+# define EMAIL_NAME   "Почта(GPRS)"
+# define SMS_NAME     "СМС"
+# define RING_NAME    "Звонок"
 #else
 # define ALARM_ON_STR  " ALARM!"
 # define ALARM_OFF_STR " ALARM END:"
-# define VKL  " ON."
-# define VIKL " OFF."
+# define VKL  " ON. "
+# define VIKL " OFF. "
 # define SVET " Light"
-# define ALARM_NAME "ALARM"
-# define GUARD_NAME "GUARD"
-# define EMAIL_NAME "EMAIL(GPRS)"
-# define SMS_NAME   "SMS"
-# define RING_NAME  "RING"
+# define SENSOR "Sensor "
+# define ALARM_NAME   "ALARM"
+# define GUARD_NAME   "GUARD"
+# define SIREN_NAME   "SIREN"
+# define SIREN2_NAME  "STROB"
+# define EMAIL_NAME   "EMAIL(GPRS)"
+# define SMS_NAME     "SMS"
+# define RING_NAME    "RING"
 #endif
 
 //-------------------------------------------------------
@@ -85,19 +91,38 @@
 // Зуммер (пищалка)
 #define BEEP_PIN  A2
 //-------------------------------------------------------
+// Команды открытия двери
+//-------------------------------------------------------
+#if RELAY_ENABLE
+// Выключение реле
+# define RELAY_OFF  {digitalWrite(CLOSE_DOOR_RELAY_PIN,!DOOR_RELAY_TYPE);digitalWrite(OPEN_DOOR_RELAY_PIN,!DOOR_RELAY_TYPE);}
+// Открываем дверь
+# define OPEN_DOOR  {digitalWrite(CLOSE_DOOR_RELAY_PIN,!DOOR_RELAY_TYPE);digitalWrite(OPEN_DOOR_RELAY_PIN,DOOR_RELAY_TYPE); \
+            digitalWrite(LED_BUILTIN,LOW);delay(DOOR_RELAY_TIME*1000);RELAY_OFF}
+// Закрываем дверь
+# define CLOSE_DOOR   if(digitalRead(DOOR_PIN)){digitalWrite(OPEN_DOOR_RELAY_PIN,!DOOR_RELAY_TYPE);digitalWrite(CLOSE_DOOR_RELAY_PIN,DOOR_RELAY_TYPE); \
+            delay(DOOR_RELAY_TIME*1000);RELAY_OFF}
+#else
 
+# define OPEN_DOOR
+# define CLOSE_DOOR 
+
+#endif
+//-------------------------------------------------------
+            
 #define FLAGS uint8_t flags=0;
-// флаг включения/отключения датчиков
-#define SENS_ENABLE uint8_t enable=0xFF;
 
 enum common_flag {
   ALARM,        	// флаг тревоги при срабатывании датчиков
   GUARD_ENABLE, 	// вкл/откл защиту
+#if SIRENA_ENABLE
+  SIREN_ENABLE,   // вкл сирену
+  SIREN2_ENABLE,  // вкл сирену 2
+#endif
   EMAIL_ENABLE,		// отправка отчётов по e-mail
   SMS_ENABLE,   	// отправка отчётов по sms
   RING_ENABLE,  	// включает/выключает звонки  
-  INTERRUPT,    	// прерывание
-  MODEM_NEED_INIT
+  INTERRUPT    	// прерывание
 };
 
 #define CONNECT_ALWAYS 1 // не разрывать соединение после отправки e-mail
@@ -128,7 +153,7 @@ enum common_flag {
 struct i2c_cmd
 {
   uint16_t type;
-  uint8_t index;
+  uint16_t index;
   uint8_t cmd;  
 };
 
@@ -137,6 +162,7 @@ struct i2c_sens_value
   uint16_t type;
   uint8_t index;
   float value;
+  bool enable; // флаг включения/отключения датчиков
 };
 
 #endif // MAIN_TYPE_H

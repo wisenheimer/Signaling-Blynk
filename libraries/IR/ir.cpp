@@ -24,5 +24,6 @@ unsigned long IRgetValue()
 
 void IRresume()
 {
+	results.value = 0;
 	irrecv.resume();
 }

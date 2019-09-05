@@ -5,14 +5,16 @@ Sensor::Sensor( // типы датчиков перечислены в "sensor.h
                 uint8_t _type,
                 // имя датчика
                 char* sens_name,
-                // ик код
-                uint32_t ir_code)
+                // код срабатывания
+                uint32_t code,
+                void (*func()))
 {
   type = _type;
-  name = (char*)malloc(strlen(sens_name)+1);
-  strcpy(name, sens_name);
-  alarm_value = ir_code;
+  name = sens_name;
+  alarm_value = code;
   count = 0;
+  enable = true;
+  callback = func;
 }
 
 Sensor::Sensor( // пин ардуино
@@ -22,23 +24,27 @@ Sensor::Sensor( // пин ардуино
                 // имя датчика
                 char* sens_name,
                 // уровень на пине датчика в спокойном режиме (LOW или HIGHT)
-                uint8_t pinLevel = LOW,
+                uint8_t pinLevel,
                 // время на подготовку датчика при старте
-                uint8_t start_time_sec = 10,
+                uint8_t start_time_sec,
                 // значение срабатывания аналогового датчика
-                uint32_t alarm_val = 200)
+                uint32_t alarm_val,
+                // выполняемая функция
+                void (*func()))
 {
   pin = _pin;
   type = _type;
-  name = (char*)malloc(strlen(sens_name)+1);
-  strcpy(name, sens_name);
-  
+  name = sens_name;
+
   start_time = start_time_sec;
   end_time   = start_time_sec;
     
   alarm_value = alarm_val;
   count = 0;
   check = false;
+  enable = true;
+
+  callback = func;
 
   if(
 #if DHT_ENABLE
@@ -48,13 +54,14 @@ Sensor::Sensor( // пин ардуино
 
   pinMode(pin, INPUT);
   digitalWrite(pin, LOW);
+
   level = pinLevel;
-  prev_pin_state = pinLevel;   
+  prev_pin_state = pinLevel; 
 }
 
 Sensor::~Sensor()
 {
-  free(name);
+
 }
 
 bool Sensor::get_pin_state()
@@ -99,10 +106,13 @@ void printAddress(DeviceAddress deviceAddress)
 
 uint8_t Sensor::get_count()  
 {
+  uint8_t tmp = count;
+
   switch (type)
   {
 #if IR_ENABLE
     case IR_SENSOR:
+    case IR_PULT:
       value = IRgetValue();
       if(alarm_value == value) count++;
       break;
@@ -170,7 +180,15 @@ uint8_t Sensor::get_count()
 #endif
         
       if(value >= alarm_value) count++;
-  }   
+  }
+    
+  if(count > tmp)
+  {
+    callback();
+#if IR_ENABLE
+    if(type == IR_PULT) count = 0;
+#endif
+  } 
     
   return count;
 }

@@ -43,7 +43,7 @@
  * @Author: wisenheimer
  * @Date:   2019-04-17 8:30:00
  * @Last Modified by: wisenheimer 
- * @Last Modified time: 2019-07-28 20:00:00
+ * @Last Modified time: 2019-09-05 16:00:00
  *************************************************************/
 
 /* Comment this out to disable prints and save space */
@@ -53,7 +53,9 @@
 #include <Wire.h>
 #include <EEPROM.h>
 #include <BlynkSimpleEsp8266.h>
+#include <WiFiUdp.h>
 #include "settings.h"
+#include <time.h>
 
 // Виртуальные пины виджетов
 #define TERMINAL_PIN  V0
@@ -76,16 +78,26 @@
 
 #define I2C_SET_COMMAND(str,i,command) {str.type=I2C_DATA;str.index=i;str.cmd=command;}
 #define I2C_SEND_COMMAND(index,cmd) {struct i2c_cmd str;I2C_SET_COMMAND(str,index,cmd);I2C_WRITE((uint8_t*)&str,sizeof(str));}
-#define GET_SENS_VALUE(i) if(sens_num){if(i>=sens_num)i=0;I2C_SEND_COMMAND(i++,I2C_SENS_VALUE);}else if(flags_num)I2C_SEND_COMMAND(i,I2C_SENS_INFO)
+#define GET_SENS_VALUE(i) DEBUG_PRINT(F("sens_num="));DEBUG_PRINT(sens_num);DEBUG_PRINT(F(" i="));DEBUG_PRINTLN(i);if(sens_num){if(i>=sens_num)i=0;I2C_SEND_COMMAND(i++,I2C_SENS_VALUE);}else if(flags_num)I2C_SEND_COMMAND(i,I2C_SENS_INFO)
 
 #define FLAGS_DELETE flags_num=0;
 
 // Задаём максимальное количество датчиков
 #define SENS_NUM_MAX  8
 // Задаём максимальное количество флагов
-#define FLAGS_NUM_MAX 5
+#define FLAGS_NUM_MAX 7
 // Максимальная длина имени флага или датчика, знаков
 #define NAME_LEN 40
+
+// ---- Синхронизация часов с сервером NTP
+IPAddress timeServerIP; // time.nist.gov NTP server address
+const char* ntpServerName = "time.nist.gov"; //"ru.pool.ntp.org";
+const int NTP_PACKET_SIZE = 48; // NTP time stamp is in the first 48 bytes of the message
+byte packetBuffer[ NTP_PACKET_SIZE]; //buffer to hold incoming and outgoing packets
+// A UDP instance to let us send and receive packets over UDP
+WiFiUDP udp;
+unsigned int localPort = 2390;      // local port to listen for UDP packets
+unsigned long epoch = 0; // время
 
 struct{
   char ssid[32];
@@ -102,12 +114,12 @@ BLYNK_ATTACH_WIDGET(table, TABLE_PIN);
 BlynkTimer timer;
 
 FLAGS
-SENS_ENABLE
 
 // Хранит названия кнопок для вывода на экран телефона
 char table_strings[FLAGS_NUM_MAX+SENS_NUM_MAX][NAME_LEN]; // список имён датчиков
 
 float values[SENS_NUM_MAX];
+bool enable[SENS_NUM_MAX];
 
 char in_buffer[IN_BUF_SIZE];  // сюда складываются байты из шины I2C
 uint8_t in_index   = 0;
@@ -115,14 +127,12 @@ uint8_t sens_index = 0;
 uint8_t flags_num  = 0;       // Число флагов
 uint8_t sens_num   = 0;       // Число датчиков
 
-uint8_t enable_prev = enable;
-
 #define BUF_DEL_BYTES(pos,num) {in_index-=num;for(uint8_t i=pos,j=pos+num;i<in_index;i++,j++){in_buffer[i]=in_buffer[j];} \
                                 memset(in_buffer+in_index,0,IN_BUF_SIZE-in_index);}
 bool parser()
 {
   char* p;
-  uint8_t len = sizeof(i2c_sens_value)-1;
+  uint8_t len = sizeof(i2c_sens_value)-4;
   char i2c_data[3] = {0x00,0x00,0x00};
 
   *((uint16_t*)i2c_data) = I2C_DATA;
@@ -134,9 +144,9 @@ bool parser()
       i2c_sens_value sens_value;
       memcpy(&sens_value, p, len);
 
-      DEBUG_PRINT(F("\nsens_type:"));
+      DEBUG_PRINT(F("\ntype:"));
       DEBUG_PRINTLN(sens_value.type, HEX);
-      DEBUG_PRINT(F("sens_index:"));
+      DEBUG_PRINT(F("index:"));
       DEBUG_PRINTLN(sens_value.index);
 
       if(sens_value.index<sens_num)
@@ -146,7 +156,7 @@ bool parser()
         { 
           *pp++=*(p+k);
         }
-        DEBUG_PRINT(F("sens_val:"));
+        DEBUG_PRINT(F("value:"));
         DEBUG_PRINTLN(sens_value.value);
       
         if(values[sens_value.index] != sens_value.value)
@@ -154,7 +164,21 @@ bool parser()
           values[sens_value.index] = sens_value.value;
           //Blynk.virtualWrite(values[sens_value.index].v_pin, values[sens_value.index]);
           table.updateRow(sens_value.index+flags_num, table_strings[sens_value.index+flags_num], values[sens_value.index]);
-        }              
+        }
+
+        // enable
+        DEBUG_PRINT(F("enable:"));
+        DEBUG_PRINTLN(sens_value.enable);
+      
+        if(enable[sens_value.index] != sens_value.enable)
+        {
+          enable[sens_value.index] = sens_value.enable;
+          terminal.print(F(SENSOR)); terminal.print(table_strings[sens_value.index+flags_num]);
+          terminal.println(enable[sens_value.index] ? VKL : VIKL);
+          terminal.flush();
+
+          ROW_SELECT(sens_value.index+flags_num, enable[sens_value.index]);          
+        }            
       }  
 #if DEBUG_MODE
       PRINT_IN_BUFFER(F("START:"))
@@ -182,11 +206,11 @@ uint8_t read_names(char* cmd, uint8_t shift, bool selected)
   {
     p+=strlen(cmd);
           
-    while(*p==' ')
+    while(*p=='%')
     {
       i = 0; p++;
       
-      while(*p && *p!=' ' && *p!='\n' && i<NAME_LEN-2) table_strings[index][i++] = *p++;
+      while(*p && *p!='%' && *p!='\n' && i<NAME_LEN-2) table_strings[index][i++] = *p++;
       table_strings[index][i] = 0x00;
            
       table.addRow(index, table_strings[index], 0);
@@ -255,15 +279,22 @@ uint8_t i2c_read()
           
         if(in_index==0) return received;
 
+        char time[10];
+        terminal.write('\n');
+        terminal.write(printTime(time, 10));
+        terminal.write("->");
         terminal.write(in_buffer);
         terminal.flush();
+        
         memset(in_buffer, 0, IN_BUF_SIZE);
         in_index = 0;
       }      
     }
     else if(count==2)
     {
-      count++;
+      //count++;
+      count--;
+      start_flag = true;
       // читаем flags
       if(flags != inChar)
       {
@@ -277,40 +308,29 @@ uint8_t i2c_read()
           ROW_SELECT(k, GET_FLAG(k));
         }
       }
-    }
-    else if(count==3)
-    {
-      count--;
-      start_flag = true;
-      // читаем flags
-      if(enable_prev != inChar)
-      {
-        for(uint8_t k = 0; k < sens_num; k++)
-        {
-          if(bitRead(enable_prev,k) != bitRead(inChar,k))
-          {
-            terminal.print(F("Sensor ")); terminal.print(table_strings[k+flags_num]);
-            bitRead(inChar,k) ? terminal.println(VKL) : terminal.println(VIKL);
-            terminal.flush();
-          }
-        }
-        enable_prev = inChar;
-      }
-      if(enable != inChar)
-      {
-        enable = inChar;
-      
-        for(uint8_t k = 0; k < sens_num; k++)
-        {
-          ROW_SELECT(k+flags_num, bitRead(enable,k));
-        }
-      }
-    }            
+    }         
   }
 
   DEBUG_PRINTLN();
 
   return received;
+}
+
+char* printTime(char* buf, uint8_t size)
+{
+  time_t rawtime = epoch;
+  struct tm  ts;
+
+  // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
+  ts = *localtime(&rawtime);
+  strftime(buf, size, "%H:%M:%S", &ts);
+  return buf;
+}
+
+// прибавляем секунду ко времени
+void myTime()
+{
+  epoch++;
 }
 
 void myTimerEvent()
@@ -336,6 +356,74 @@ void myTimerEvent()
     FLAGS_DELETE
     table.clear();
   }
+}
+
+// таймер синхронизации времени
+void syncTimerEvent()
+{
+  //get a random server from the pool
+  WiFi.hostByName(ntpServerName, timeServerIP); 
+
+  sendNTPpacket(timeServerIP); // send an NTP packet to a time server
+  // wait to see if a reply is available
+  delay(1000);
+  
+  int cb = udp.parsePacket();
+  if (!cb) {
+    DEBUG_PRINTLN(F("no packet yet"));
+  }
+  else {
+    DEBUG_PRINT(F("packet received, length="));
+    DEBUG_PRINTLN(cb);
+    // We've received a packet, read the data from it
+    udp.read(packetBuffer, NTP_PACKET_SIZE); // read the packet into the buffer
+
+    //the timestamp starts at byte 40 of the received packet and is four bytes,
+    // or two words, long. First, esxtract the two words:
+
+    unsigned long highWord = word(packetBuffer[40], packetBuffer[41]);
+    unsigned long lowWord = word(packetBuffer[42], packetBuffer[43]);
+    // combine the four bytes (two words) into a long integer
+    // this is NTP time (seconds since Jan 1 1900):
+    unsigned long secsSince1900 = highWord << 16 | lowWord;
+    DEBUG_PRINT(F("Seconds since Jan 1 1900 = " ));
+    DEBUG_PRINTLN(secsSince1900);
+
+    // now convert NTP time into everyday time:
+    DEBUG_PRINT(F("Unix time = "));
+    // Unix time starts on Jan 1 1970. In seconds, that's 2208988800:
+    const unsigned long seventyYears = 2208988800UL;
+    // subtract seventy years:
+    epoch = secsSince1900 - seventyYears;
+    // print Unix time:
+    Serial.println(epoch);
+    
+    // корректировка часового пояса и синхронизация 
+    epoch = epoch + GMT * 3600;
+      
+   // настройка времени часов модема SIM800L
+    // AT+CCLK="19/08/27,10:01:00+03"
+    // print the hour, minute and second:
+    DEBUG_PRINT(F("The UTC time is "));       // UTC is the time at Greenwich Meridian (GMT)
+
+    time_t rawtime = epoch;
+    struct tm  ts;
+    char       buf[80];
+
+    // Format time, "ddd yyyy-mm-dd hh:mm:ss zzz"
+    ts = *localtime(&rawtime);
+    strftime(buf, sizeof(buf), "AT+CCLK=\"%y/%m/%d,%H:%M:%S+", &ts);
+    if(GMT < 10)
+    {
+      strcat(buf,"0");
+    }
+    itoa(GMT,buf+strlen(buf),10);
+    strcat(buf,"\"\n");
+    SERIAL_PRINTLN(buf);
+    
+    I2C_WRITE(buf,strlen(buf));
+  }
+  // wait ten seconds before asking for the time again
 }
 
 // You can send commands from Terminal to your hardware. Just use
@@ -419,8 +507,7 @@ uint8_t read_com()
 void setup()
 {
   flags = 0;
-  enable = 0;
-	
+
   Wire.begin(D1, D2);
 
   // Debug console
@@ -460,6 +547,8 @@ void setup()
 
   // Setup a function to be called every second
  	timer.setInterval(2000L, myTimerEvent);
+  timer.setInterval(SYNC_TIME_PERIOD, syncTimerEvent);
+  timer.setInterval(1000, myTime);
 
   // Setup table event callbacks
  	table.onOrderChange([](int indexFrom, int indexTo)
@@ -473,7 +562,7 @@ void setup()
 
  	table.onSelectChange([](int index, bool selected)
  	{
-    uint8_t tmp;
+    uint16_t tmp;
 
     if(index < flags_num)
    	{
@@ -484,8 +573,7 @@ void setup()
     else
     {
       index-=flags_num;
-      tmp = enable;
-      selected ? bitSet(tmp,index) : bitClear(tmp,index);
+      tmp = (index << 8) | selected;
       I2C_SEND_COMMAND(tmp,I2C_SENS_ENABLE);      
     }
   });
@@ -497,6 +585,13 @@ void setup()
 
   //clean table at start
   table.clear();
+
+  DEBUG_PRINTLN(F("Starting UDP"));
+  udp.begin(localPort);
+  DEBUG_PRINT(F("Local port: "));
+  DEBUG_PRINTLN(udp.localPort());
+  // синхронизируем время при загрузке
+  syncTimerEvent();
 }
 
 void loop()
@@ -504,3 +599,29 @@ void loop()
 	Blynk.run();
 	timer.run(); // Initiates BlynkTimer
 }
+
+// send an NTP request to the time server at the given address
+unsigned long sendNTPpacket(IPAddress& address)
+{
+  DEBUG_PRINTLN(F("sending NTP packet..."));
+  // set all bytes in the buffer to 0
+  memset(packetBuffer, 0, NTP_PACKET_SIZE);
+  // Initialize values needed to form NTP request
+  // (see URL above for details on the packets)
+  packetBuffer[0] = 0b11100011;   // LI, Version, Mode
+  packetBuffer[1] = 0;     // Stratum, or type of clock
+  packetBuffer[2] = 6;     // Polling Interval
+  packetBuffer[3] = 0xEC;  // Peer Clock Precision
+  // 8 bytes of zero for Root Delay & Root Dispersion
+  packetBuffer[12]  = 49;
+  packetBuffer[13]  = 0x4E;
+  packetBuffer[14]  = 49;
+  packetBuffer[15]  = 52;
+
+  // all NTP fields have been given values, now
+  // you can send a packet requesting a timestamp:
+  udp.beginPacket(address, 123); //NTP requests are to port 123
+  udp.write(packetBuffer, NTP_PACKET_SIZE);
+  udp.endPacket();
+} 
+

@@ -1,16 +1,10 @@
 
 #include "my_sensors.h"
 
-SENS_ENABLE
-
 MY_SENS::MY_SENS(Sensor* sens, uint8_t num)
 {
   sensors = sens;
   size = num;
-
-#if IR_ENABLE
-  IRrecvInit();
-#endif
 }
 
 MY_SENS::~MY_SENS()
@@ -63,23 +57,19 @@ void MY_SENS::TimeReset()
   }
 }
 
-void MY_SENS::SetEnable(uint8_t value)
+void MY_SENS::SetEnable(uint8_t index, bool value)
 {
-  enable = value;
+  sensors[index].enable = value;
 }
 
-uint8_t MY_SENS::GetEnable()
+bool MY_SENS::GetEnable(uint8_t index)
 {
-  return enable;
+  return sensors[index].enable;
 }
 
 uint8_t MY_SENS::SensOpros()
 {
   uint8_t count = 0;
-
-#if IR_ENABLE
-  IRread();
-#endif
 
 #if RF_ENABLE
   nRFread();
@@ -93,16 +83,11 @@ uint8_t MY_SENS::SensOpros()
     {
       if(sensors[i].get_count())
       {
-        if(bitRead(enable,i)) count++;
+        //if(bitRead(enable,i)) count++;
+        if(sensors[i].enable) count++;
       }       
     }
   }
-
-#if IR_ENABLE
-
-  IRresume();
-
-#endif
 
   return count;
 }

@@ -56,9 +56,8 @@ uint16_t TEXT::GetBytes(char* buf, unsigned int len, bool flag_copy)
 
 void TEXT::AddInt(unsigned int i)
 {
-  char *buf = (char*)calloc(1,7);
-  AddText(itoa(i,buf,10));  
-  free(buf);
+  char buf[7];
+  AddText(itoa(i,buf,10));
 }
 
 void TEXT::AddFloat(float value)
