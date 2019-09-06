@@ -84,7 +84,7 @@ void receiveEvent(int numBytes)
             i2c_tx_buf->AddText_P(PSTR(ALARM_NAME));
             i2c_tx_buf->AddChar('%');
             i2c_tx_buf->AddText_P(PSTR(GUARD_NAME));
-#if SIREN_ENABLE
+#if SIRENA_ENABLE
             i2c_tx_buf->AddChar('%');
             i2c_tx_buf->AddText_P(PSTR(SIREN_NAME));
             i2c_tx_buf->AddChar('%');
