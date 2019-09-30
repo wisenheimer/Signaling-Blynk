@@ -189,7 +189,7 @@ void MODEM::init()
 {
   dtmf_index      = 0;
   dtmf_str_index  = 0;
-  DTMF[0]         = MODEM_RESET;
+  DTMF[0]         = 0;
   DTMF[1]         = 0;
   text            = new TEXT(350);
   email_buffer    = new TEXT(192);
@@ -198,6 +198,7 @@ void MODEM::init()
   ADMIN_PHONE_SET_ZERO;
   SET_FLAG_ONE(RING_ENABLE);
   OTCHET_INIT
+  reinit();
 }
 
 void MODEM::reinit()
