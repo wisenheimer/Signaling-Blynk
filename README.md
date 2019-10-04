@@ -70,6 +70,7 @@ Signaling Arduino+esp8266+SIM800L+Blynk
 * MOSFET транзисторы AO3400A для включения платы NodeMcu и внешних маломощных устройств. http://ali.pub/3unmrf
 * Разъёмы для подключения других датчиков: http://ali.pub/3unnfj http://ali.pub/3unnj1 http://ali.pub/3unn7k http://ali.pub/3unnaa 
 * Плата заряда литиевого аккумулятора. http://ali.pub/3unmx2
+* Держатель для аккумулятора. http://ali.pub/3unofi
 
 Кроме того, к свободным пинам могут подключаться любые другие ардуиносовместимые датчики и модули.
 
