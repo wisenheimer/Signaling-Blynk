@@ -3,13 +3,9 @@ Signaling Arduino+esp8266+SIM800L+Blynk
 
 ![IMG_20190327_152148](https://user-images.githubusercontent.com/45194485/55217894-aa80cc00-5211-11e9-9fe6-9ef0c5320408.jpg)
 
-Прошивка создана для платы из этого проекта: https://easyeda.com/MihAlex/signaling-Arduino-SIM800L
-Плата постоянно совершенствуется, и может изменяться.
-Более компактная версия платы https://easyeda.com/MihAlex/signaling-Arduino-SIM800L_copy
+Прошивка создана для платы из этого проекта: https://easyeda.com/MihAlex/signaling-Arduino-SIM800L_copy
 ![IMG_20190718_134050](https://user-images.githubusercontent.com/45194485/61475715-15f2d300-a994-11e9-8134-95c09bc1f5de.jpg)
 ![IMG_20190718_133748](https://user-images.githubusercontent.com/45194485/61475880-7124c580-a994-11e9-9530-e0851286b861.jpg)
-
-За покупкой готовой платы можете обращаться мне на почту mihalex101@gmail.com
 
 Статья по этому проекту https://pikabu.ru/story/gsmgprswifiblynk_signalizatsiya_na_arduino_6648404
 
@@ -175,7 +171,7 @@ https://github.com/PaulStoffregen/OneWire
 
 В менеджере библиотек называется Grove 4-Digit Display.
 
-## Подключение 7 сигментного индикатора TM1637. Электронные часы
+## Подключение 7 сегментного индикатора TM1637. Электронные часы
 
 К плате Ардуино можно подключить 7 сигментный индикатор TM1637, на который будет выводиться текущее время. Нужен, если мы хотим поставить сигнализацию на видное место и замаскировать под электронные часы. Удобно при использовании беспроводных датчиков.
 
